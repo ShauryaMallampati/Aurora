@@ -1,0 +1,11 @@
+numpy
+matplotlib
+gymnasium
+stable-baselines3
+scipy
+openai
+requests
+pathlib
+transformers
+torch
+accelerate

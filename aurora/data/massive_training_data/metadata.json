@@ -1,0 +1,109 @@
+{
+  "generator_version": "1.0",
+  "created_at": "2025-07-26T23:08:50.166923",
+  "total_scenarios": 500,
+  "data_types": [
+    "terrain",
+    "weather",
+    "fire",
+    "drones",
+    "actions",
+    "rewards"
+  ],
+  "complexity_distribution": {
+    "easy": {
+      "count": 151,
+      "percentage": 30.2
+    },
+    "medium": {
+      "count": 241,
+      "percentage": 48.199999999999996
+    },
+    "hard": {
+      "count": 108,
+      "percentage": 21.6
+    }
+  },
+  "template_distributions": {
+    "terrain_template": {
+      "urban_interface": {
+        "count": 104,
+        "percentage": 20.8
+      },
+      "mountainous": {
+        "count": 85,
+        "percentage": 17.0
+      },
+      "coastal": {
+        "count": 43,
+        "percentage": 8.6
+      },
+      "forest_dense": {
+        "count": 35,
+        "percentage": 7.000000000000001
+      },
+      "mixed_terrain": {
+        "count": 116,
+        "percentage": 23.200000000000003
+      },
+      "forest_sparse": {
+        "count": 117,
+        "percentage": 23.400000000000002
+      }
+    },
+    "weather_template": {
+      "extreme": {
+        "count": 136,
+        "percentage": 27.200000000000003
+      },
+      "moderate": {
+        "count": 55,
+        "percentage": 11.0
+      },
+      "severe": {
+        "count": 101,
+        "percentage": 20.200000000000003
+      },
+      "calm": {
+        "count": 208,
+        "percentage": 41.6
+      }
+    },
+    "fire_template": {
+      "mega_fire": {
+        "count": 113,
+        "percentage": 22.6
+      },
+      "medium_fire": {
+        "count": 68,
+        "percentage": 13.600000000000001
+      },
+      "small_outbreak": {
+        "count": 209,
+        "percentage": 41.8
+      },
+      "large_fire": {
+        "count": 110,
+        "percentage": 22.0
+      }
+    },
+    "drone_template": {
+      "standard": {
+        "count": 60,
+        "percentage": 12.0
+      },
+      "minimal": {
+        "count": 210,
+        "percentage": 42.0
+      },
+      "extended": {
+        "count": 118,
+        "percentage": 23.599999999999998
+      },
+      "massive": {
+        "count": 112,
+        "percentage": 22.400000000000002
+      }
+    }
+  }
+}
