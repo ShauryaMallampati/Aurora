@@ -1,0 +1,17 @@
+{
+  "generator_version": "1.0",
+  "created_at": "2025-07-26T22:56:45.953454",
+  "data_sources": [
+    "NASA FIRMS",
+    "NOAA Weather",
+    "USGS Elevation"
+  ],
+  "real_data_only": true,
+  "no_synthetic_data": true,
+  "total_scenarios": 3,
+  "locations_used": [
+    "australia_2020",
+    "california_2023",
+    "amazon_2019"
+  ]
+}
