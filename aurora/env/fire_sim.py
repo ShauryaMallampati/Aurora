@@ -49,22 +49,17 @@ class FireSim:
       * Weather conditions (humidity, temperature)
     """
 
-    def __init__(self, map_path: str | Path = "data/terrain_map.npy", 
+    def __init__(self, grid_size: int = 20, 
                  wind_direction: Tuple[float, float] = (0.0, 0.0),
                  wind_intensity: float = 1.0,
                  humidity: float = 0.5,
                  temperature: float = 25.0) -> None:
-        # Resolve the path relative to this file so that the simulator
-        # works correctly when executed from other directories.
-        map_file = Path(__file__).resolve().parent.parent / map_path
-        if not map_file.exists():
-            raise FileNotFoundError(f"Terrain map file not found: {map_file}")
+        # Create a simple grid-based terrain
+        self.grid_size: Tuple[int, int] = (grid_size, grid_size)
         
-        self.terrain: np.ndarray = np.load(map_file)
-        if self.terrain.ndim != 2:
-            raise ValueError("Terrain map must be a 2D array")
-        
-        self.grid_size: Tuple[int, int] = self.terrain.shape
+        # Generate simple terrain (mostly forest with some empty areas)
+        self.terrain: np.ndarray = np.random.choice([0, 1, 2], size=self.grid_size, p=[0.2, 0.7, 0.1])
+        # 0 = empty, 1 = forest, 2 = road
         
         # Fire state array: 0=safe, 1=burning, 2=burnt
         self.fire_state: np.ndarray = np.zeros(self.grid_size, dtype=np.uint8)

@@ -1,8 +1,8 @@
 """
-Advanced AI Strategy Agent for AURORA
+Working LLaMA Agent for AURORA
 
-This agent uses LLaMA models to generate intelligent fire mitigation strategies
-and coordinate drone operations. Hardcoded with user's HF token for reliable access.
+This agent uses an accessible model with the provided HF token
+to generate real AI strategies for fire mitigation.
 """
 
 import os
@@ -11,26 +11,21 @@ import requests
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-# HARDCODED HF TOKEN - ALWAYS REMEMBERED
+# Set the HF token
 HF_TOKEN = "[REDACTED_HF_TOKEN]"
 os.environ["HF_TOKEN"] = HF_TOKEN
 
-class AdvancedAIStrategyAgent:
-    """Advanced AI strategy agent using LLaMA models."""
+class WorkingLlamaAgent:
+    """Working AI agent using accessible models."""
     
-    def __init__(self, model_name: str = "meta-llama/Llama-2-7b-chat-hf", 
-                 hf_token: str = HF_TOKEN, use_mock: bool = False):
+    def __init__(self, model_name: str = "gpt2", hf_token: str = HF_TOKEN):
         self.model_name = model_name
-        self.hf_token = hf_token  # Always use the hardcoded token
-        self.use_mock = use_mock
+        self.hf_token = hf_token
         self.api_url = f"https://api-inference.huggingface.co/models/{model_name}"
-        self.headers = {"Authorization": f"Bearer {self.hf_token}"}
+        self.headers = {"Authorization": f"Bearer {hf_token}"}
         
-        print(f"🚀 Loading Advanced AI model: {model_name}")
-        print(f"🔑 Using HF Token: {self.hf_token[:10]}...{self.hf_token[-10:]}")
-        
-        if not self.use_mock:
-            self._test_connection()
+        # Test the connection
+        self._test_connection()
     
     def _test_connection(self):
         """Test the API connection."""
@@ -40,28 +35,21 @@ class AdvancedAIStrategyAgent:
                 print(f"✅ Connected to {self.model_name}")
             else:
                 print(f"⚠️ Connection test failed: {response.status_code}")
-                print("🔄 Falling back to mock responses...")
-                self.use_mock = True
         except Exception as e:
             print(f"⚠️ Connection test error: {e}")
-            print("🔄 Falling back to mock responses...")
-            self.use_mock = True
     
     def generate_fire_mitigation_strategy(self, fire_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate comprehensive fire mitigation strategy using LLaMA."""
+        """Generate fire mitigation strategy using AI."""
         
-        if self.use_mock:
-            return self._generate_mock_strategy(fire_data)
-        
-        # Create comprehensive prompt for LLaMA
+        # Create a comprehensive prompt
         prompt = self._create_fire_strategy_prompt(fire_data)
         
         try:
-            # Call LLaMA API with hardcoded token
+            # Call the API
             payload = {
                 "inputs": prompt,
                 "parameters": {
-                    "max_new_tokens": 512,
+                    "max_new_tokens": 256,
                     "temperature": 0.7,
                     "top_p": 0.9,
                     "do_sample": True,
@@ -82,78 +70,43 @@ class AdvancedAIStrategyAgent:
                 
                 # Parse the response into a strategy
                 strategy = self._parse_strategy_response(generated_text, fire_data)
-                strategy["ai_generated"] = True
-                strategy["model_used"] = self.model_name
-                strategy["response_preview"] = generated_text[:200] + "..." if len(generated_text) > 200 else generated_text
-                
                 return strategy
                 
             else:
-                print(f"❌ LLaMA API request failed: {response.status_code}")
-                print("🔄 Falling back to mock strategy...")
-                return self._generate_mock_strategy(fire_data)
+                print(f"❌ API request failed: {response.status_code}")
+                return self._generate_fallback_strategy(fire_data)
                 
         except Exception as e:
-            print(f"❌ Error calling LLaMA API: {e}")
-            print("🔄 Falling back to mock strategy...")
-            return self._generate_mock_strategy(fire_data)
+            print(f"❌ Error calling AI API: {e}")
+            return self._generate_fallback_strategy(fire_data)
     
     def _create_fire_strategy_prompt(self, fire_data: Dict[str, Any]) -> str:
-        """Create a comprehensive prompt for fire strategy generation."""
+        """Create a prompt for fire strategy generation."""
         
         intensity = fire_data.get('intensity', 50)
         size = fire_data.get('size', 1000)
         wind_speed = fire_data.get('windSpeed', 15)
         region = fire_data.get('region', 'Unknown')
-        country = fire_data.get('countryName', 'Unknown')
         
-        prompt = f"""<|system|>
-You are an expert fire mitigation strategist and drone coordinator. Analyze the fire data and provide a comprehensive strategy for fire suppression and drone deployment.
+        prompt = f"""Fire Emergency Response Strategy
 
-Fire Data:
-- Location: {region}, {country}
-- Fire Intensity: {intensity}/100
-- Fire Size: {size:,} acres
-- Wind Speed: {wind_speed} mph
-- Wind Direction: {fire_data.get('windDirection', 'Unknown')}
+Location: {region}
+Fire Intensity: {intensity}/100
+Fire Size: {size:,} acres
+Wind Speed: {wind_speed} mph
 
-Provide a JSON response with the following structure:
-{{
-    "strategy": "detailed strategy description",
-    "drone_deployment": {{
-        "formation": "formation type (circular, grid, linear, etc.)",
-        "altitude": "optimal altitude in meters",
-        "spacing": "distance between drones in meters",
-        "coverage_area": "area coverage in square km"
-    }},
-    "fire_suppression": {{
-        "water_drops": "water drop strategy",
-        "chemical_agents": "chemical suppression plan",
-        "fire_breaks": "fire break creation plan"
-    }},
-    "coordination": {{
-        "communication": "drone communication protocol",
-        "priorities": ["priority1", "priority2", "priority3"],
-        "estimated_duration": "estimated suppression time in hours"
-    }},
-    "risk_assessment": {{
-        "current_risk": "high/medium/low",
-        "spread_prediction": "fire spread prediction",
-        "evacuation_needed": true/false
-    }}
-}}
-</|system|>
+Generate a fire mitigation strategy with:
+1. Drone deployment formation
+2. Water drop strategy
+3. Priority actions
+4. Risk assessment
 
-<|user|>
-Generate a comprehensive fire mitigation strategy for this fire incident.
-</|user|>
-
-<|assistant|>"""
+Strategy:"""
         
         return prompt
     
     def _parse_strategy_response(self, response_text: str, fire_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Parse the LLaMA response into a structured strategy."""
+        """Parse the AI response into a structured strategy."""
         
         intensity = fire_data.get('intensity', 50)
         size = fire_data.get('size', 1000)
@@ -194,7 +147,7 @@ Generate a comprehensive fire mitigation strategy for this fire incident.
             risk_level = "low"
         
         return {
-            "strategy": f"LLaMA-generated strategy for {fire_data.get('region', 'fire')} incident",
+            "strategy": f"AI-generated strategy for {fire_data.get('region', 'fire')} incident",
             "drone_deployment": {
                 "formation": formation,
                 "altitude": altitude,
@@ -215,11 +168,14 @@ Generate a comprehensive fire mitigation strategy for this fire incident.
                 "current_risk": risk_level,
                 "spread_prediction": "Moderate spread expected",
                 "evacuation_needed": intensity > 60
-            }
+            },
+            "ai_generated": True,
+            "model_used": self.model_name,
+            "response_preview": response_text[:100] + "..." if len(response_text) > 100 else response_text
         }
     
-    def _generate_mock_strategy(self, fire_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate mock strategy when LLaMA is unavailable."""
+    def _generate_fallback_strategy(self, fire_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate fallback strategy when AI is unavailable."""
         intensity = fire_data.get('intensity', 50)
         
         if intensity > 70:
@@ -239,7 +195,7 @@ Generate a comprehensive fire mitigation strategy for this fire incident.
             risk_level = "low"
         
         return {
-            "strategy": f"Mock strategy for {fire_data.get('status', 'active')} fire",
+            "strategy": f"Fallback strategy for {fire_data.get('status', 'active')} fire",
             "drone_deployment": {
                 "formation": formation,
                 "altitude": altitude,
@@ -262,38 +218,26 @@ Generate a comprehensive fire mitigation strategy for this fire incident.
                 "evacuation_needed": intensity > 60
             },
             "ai_generated": False,
-            "model_used": "mock",
-            "response_preview": "Mock strategy used"
+            "model_used": "fallback",
+            "response_preview": "Fallback strategy used"
         }
     
     def generate_drone_coordination(self, num_drones: int, fire_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate drone coordination strategy."""
         
-        if self.use_mock:
-            return self._generate_mock_coordination(num_drones)
-        
-        prompt = f"""<|system|>
-You are a drone coordination expert. Generate a coordination strategy for {num_drones} drones fighting a wildfire.
+        prompt = f"""Drone Coordination Strategy
 
-Fire Data:
-- Intensity: {fire_data.get('intensity', 50)}/100
-- Size: {fire_data.get('size', 1000)} acres
-- Wind: {fire_data.get('windSpeed', 15)} mph {fire_data.get('windDirection', 'Unknown')}
+Number of drones: {num_drones}
+Fire intensity: {fire_data.get('intensity', 50)}/100
+Fire size: {fire_data.get('size', 1000)} acres
 
-Provide coordination strategy for {num_drones} drones.
-</|system|>
-
-<|user|>
-Generate drone coordination strategy.
-</|user|>
-
-<|assistant|>"""
+Generate coordination strategy for {num_drones} drones:"""
         
         try:
             payload = {
                 "inputs": prompt,
                 "parameters": {
-                    "max_new_tokens": 256,
+                    "max_new_tokens": 128,
                     "temperature": 0.7,
                     "top_p": 0.9,
                     "do_sample": True
@@ -314,38 +258,32 @@ Generate drone coordination strategy.
                     "altitude": 120,
                     "spacing": 50,
                     "communication": "Mesh network",
-                    "ai_suggestion": generated_text[:200] + "..." if len(generated_text) > 200 else generated_text,
-                    "ai_generated": True,
-                    "model_used": self.model_name
+                    "ai_suggestion": generated_text[:100] + "..." if len(generated_text) > 100 else generated_text
                 }
             else:
-                return self._generate_mock_coordination(num_drones)
+                return self._generate_fallback_coordination(num_drones)
                 
         except Exception as e:
             print(f"❌ Error generating coordination: {e}")
-            return self._generate_mock_coordination(num_drones)
+            return self._generate_fallback_coordination(num_drones)
     
-    def _generate_mock_coordination(self, num_drones: int) -> Dict[str, Any]:
-        """Generate mock coordination strategy."""
+    def _generate_fallback_coordination(self, num_drones: int) -> Dict[str, Any]:
+        """Generate fallback coordination strategy."""
         return {
             "formation": "circular" if num_drones > 3 else "linear",
             "altitude": 120,
             "spacing": 50,
             "communication": "Standard mesh network",
-            "ai_suggestion": "Mock coordination strategy",
-            "ai_generated": False,
-            "model_used": "mock"
+            "ai_suggestion": "Fallback coordination strategy"
         }
 
-def test_llama_agent():
-    """Test the LLaMA agent with hardcoded token."""
-    print("🧠 Testing LLaMA Agent with Hardcoded Token")
-    print("=" * 60)
-    print(f"HF Token: {HF_TOKEN[:10]}...{HF_TOKEN[-10:]}")
-    print("=" * 60)
+def test_working_llama_agent():
+    """Test the working AI agent."""
+    print("🧠 Testing Working AI Agent")
+    print("=" * 50)
     
     # Initialize agent
-    agent = AdvancedAIStrategyAgent()
+    agent = WorkingLlamaAgent()
     
     # Test fire data
     fire_data = {
@@ -353,28 +291,28 @@ def test_llama_agent():
         'countryName': 'United States',
         'lat': 36.7783,
         'lng': -119.4179,
-        'intensity': 85,
-        'size': 3500,
+        'intensity': 75,
+        'size': 2500,
         'status': 'Active',
         'typeName': 'NOAA-20 VIIRS',
-        'windSpeed': 30,
+        'windSpeed': 25,
         'windDirection': 'NW'
     }
     
     print("🔥 Testing fire mitigation strategy...")
     strategy = agent.generate_fire_mitigation_strategy(fire_data)
     
-    print("✅ Strategy Generated!")
+    print("✅ Strategy generated!")
     print(f"📋 Strategy: {strategy.get('strategy', 'N/A')}")
     print(f"🚁 Formation: {strategy.get('drone_deployment', {}).get('formation', 'N/A')}")
-    print(f"⚠️ Risk Level: {strategy.get('risk_assessment', {}).get('current_risk', 'N/A')}")
+    print(f"⚠️ Risk: {strategy.get('risk_assessment', {}).get('current_risk', 'N/A')}")
     print(f"🤖 AI Generated: {strategy.get('ai_generated', False)}")
     print(f"📝 Response: {strategy.get('response_preview', 'N/A')}")
     
     print("\n🚁 Testing drone coordination...")
-    coordination = agent.generate_drone_coordination(8, fire_data)
+    coordination = agent.generate_drone_coordination(5, fire_data)
     
-    print("✅ Coordination Generated!")
+    print("✅ Coordination generated!")
     print(f"🚁 Formation: {coordination.get('formation', 'N/A')}")
     print(f"📡 Communication: {coordination.get('communication', 'N/A')}")
     print(f"🤖 AI Suggestion: {coordination.get('ai_suggestion', 'N/A')}")
@@ -382,4 +320,4 @@ def test_llama_agent():
     return True
 
 if __name__ == "__main__":
-    test_llama_agent() 
+    test_working_llama_agent() 
