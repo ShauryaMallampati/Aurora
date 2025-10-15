@@ -418,7 +418,7 @@ def main():
                        help='Number of parallel environments (4 recommended, 8192 steps/update)')
     
     # === LLM SETTINGS ===
-    parser.add_argument('--llm_model', type=str, default='Qwen/Qwen2.5-7B-Instruct',
+    parser.add_argument('--llm_model', type=str, default='Qwen/Qwen2.5-1.5B-Instruct',
                        help='HuggingFace LLM model ID (Qwen recommended for ISEF)')
     parser.add_argument('--llm_freq', type=int, default=50,
                        help='Steps between LLM guidance (50 recommended, 75 if too frequent)')
@@ -432,6 +432,8 @@ def main():
                        help='Save model every N steps (default: every 5 updates = 40960 steps)')
     parser.add_argument('--eval_freq', type=int, default=81920,
                        help='Eval every N steps (default: every 10 updates = 81920 steps)')
+    parser.add_argument('--progress_freq', type=int, default=100,
+                       help='How often (in steps) to print progress updates to console (default 100). Set to 1 to print every step.')
     
     # === OTHER ===
     parser.add_argument('--verbose', type=int, default=1,
@@ -556,8 +558,8 @@ def main():
     # Create callback with real-time progress and checkpointing
     # Note: hybrid_agent will be accessed through env, stats collected separately
     callback = TrainingCallback(
-        check_freq=100,           # Print progress every 100 steps (real-time)
-        save_freq=500,            # Save checkpoint every 500 steps
+        check_freq=args.progress_freq,           # Print progress every N steps (real-time)
+        save_freq=args.save_freq,                # Save checkpoint every N steps (from CLI)
         total_timesteps=args.timesteps, 
         save_path="./results/checkpoints/",
         verbose=1
