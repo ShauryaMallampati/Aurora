@@ -1,6 +1,6 @@
 # AURORA ISEF 2025 Training Configuration
-# Expert-recommended phased training for world-class results
-# Total: ~13.12M environment steps across 4 phases
+# Optimized for realistic ISEF timeline with n_envs=4
+# Total: 400K environment steps across 3 phases (~8-12 hours training)
 
 # PPO Parameters (with n_steps=2048, num_envs=4 → 8192 steps/update)
 ppo_defaults:
@@ -17,7 +17,7 @@ ppo_defaults:
 
 # Checkpointing & Evaluation
 checkpoint:
-  save_every_steps: 500        # Save every 500 steps for resume capability
+  save_every_steps: 5000       # Save every 5K steps for resume capability
   save_every_updates: 5
   keep_top_n: 10               # Keep more checkpoints for safety
   eval_every_updates: 10
@@ -44,16 +44,16 @@ phase_a:
   name: "Sanity Check & Real Data Overfit"
   purpose: "Verify learning works and model locks onto real fire patterns"
   
-  updates: 250
-  env_steps: 2_048_000  # 250 × 8192 ≈ 2.05M
+  updates: 7             # 7 × 8192 ≈ 57K steps
+  env_steps: 57_344      # ~50K for quick sanity check
   
   # Data settings
   scenario_pool_size: 1000  # Smaller pool to overfit
   fire_size_range: [10, 100]
   wind_speed_range: [0, 15]
   
-  # LLM settings
-  llm_cadence: 50  # Guidance every 50 steps
+  # LLM settings (less frequent for speed)
+  llm_cadence: 100  # Guidance every 100 steps (reduced from 50)
   llm_model: "Qwen/Qwen2.5-1.5B-Instruct"  # Lightweight 1.5B model
   
   # Reward weights
@@ -79,8 +79,8 @@ phase_b:
   name: "Curriculum on Real Data"
   purpose: "Scale difficulty and generality within real dataset"
   
-  updates: 500
-  env_steps: 4_096_000  # 500 × 8192 ≈ 4.10M
+  updates: 18            # 18 × 8192 ≈ 147K steps
+  env_steps: 147_456     # ~150K for curriculum learning
   
   # Data settings (increased complexity)
   scenario_pool_size: 5000
@@ -89,9 +89,9 @@ phase_b:
   slope_variance: 0.3
   horizon: 150  # Longer episodes
   
-  # LLM settings
+  # LLM settings (less frequent for speed)
   llm_model: "Qwen/Qwen2.5-1.5B-Instruct"  # Lightweight 1.5B model
-  llm_cadence: 50  # Keep at 50, move to 75 if too frequent
+  llm_cadence: 100  # Reduced from 50 for speed
   llm_cache_enabled: true
   cache_by: ["fire_id", "t_bucket", "wind_regime"]
   
@@ -119,8 +119,8 @@ phase_c:
   name: "Full Dataset Mix"
   purpose: "Expose broad geography and years, maintain generalization"
   
-  updates: 600
-  env_steps: 4_915_200  # 600 × 8192 ≈ 4.92M
+  updates: 24            # 24 × 8192 ≈ 196K steps
+  env_steps: 196_608     # ~200K for full dataset exposure
   
   # Data settings (full diversity)
   scenario_pool_size: 116337  # All available fires
@@ -134,9 +134,9 @@ phase_c:
   sample_years: [1308, 2024]  # Full range
   sample_states: "all_except_holdout"
   
-  # LLM settings
+  # LLM settings (less frequent for speed)
   llm_model: "Qwen/Qwen2.5-1.5B-Instruct"  # Lightweight 1.5B model
-  llm_cadence: 50
+  llm_cadence: 100  # Reduced from 50 for speed
   llm_cache_enabled: true
   cache_target_hit_rate: 0.60
   
@@ -199,13 +199,16 @@ phase_d:
     eval_consecutive_success: 3
 
 # ========== SUMMARY ==========
-total_env_steps: 13_120_000  # 13.12M
-total_wall_time_estimate: "18-24 hours"
+total_env_steps: 401_408      # ~400K steps total (optimized for ISEF)
+total_updates: 49             # 7 + 18 + 24 = 49 updates
+total_wall_time_estimate: "8-12 hours (with n_envs=4 + Gemini backend)"
 recommended_phases_for_isef: ["phase_a", "phase_b", "phase_c"]
-optional_phase: "phase_d"
+optional_phase: "phase_d (deprecated - not needed for 400K training)"
 
 # Quick reference
 quick_reference:
   steps_per_update: 8192
-  updates_for_1M_steps: 122
-  updates_for_10M_steps: 1221
+  updates_for_50K_steps: 7
+  updates_for_150K_steps: 18
+  updates_for_200K_steps: 24
+  total_for_400K: 49

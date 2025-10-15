@@ -406,8 +406,8 @@ def main():
     
     # === PHASE SELECTION (ISEF-optimized) ===
     parser.add_argument('--phase', type=str, default='full', 
-                       choices=['phase_a', 'phase_b', 'phase_c', 'phase_d', 'full', 'quick', 'test'],
-                       help='Training phase: phase_a (2M), phase_b (4M), phase_c (5M), phase_d (2M), full (13M), quick (50K), or test (10K debug)')
+                       choices=['phase_a', 'phase_b', 'phase_c', 'full', 'quick', 'test'],
+                       help='Training phase: phase_a (50K), phase_b (150K), phase_c (200K), full (400K), quick (50K), or test (10K debug)')
     
     # === MANUAL OVERRIDE (if not using phases) ===
     parser.add_argument('--timesteps', type=int, default=None, 
@@ -420,20 +420,20 @@ def main():
     # === LLM SETTINGS ===
     parser.add_argument('--llm_model', type=str, default='Qwen/Qwen2.5-1.5B-Instruct',
                        help='HuggingFace LLM model ID (Qwen recommended for ISEF)')
-    parser.add_argument('--llm_freq', type=int, default=50,
-                       help='Steps between LLM guidance (50 recommended, 75 if too frequent)')
+    parser.add_argument('--llm_freq', type=int, default=100,
+                       help='Steps between LLM guidance (100 recommended for speed, 50 for more guidance)')
     parser.add_argument('--hf_token', type=str, default=None,
                        help='HuggingFace API token (or set HF_TOKEN env var)')
-    parser.add_argument('--llm_backend', type=str, default='transformers',
-                       help='LLM backend to use: transformers or gemini')
+    parser.add_argument('--llm_backend', type=str, default='gemini',
+                       help='LLM backend to use: transformers or gemini (gemini recommended for n_envs>1)')
     
     # === CHECKPOINTING & EVALUATION ===
     parser.add_argument('--save_freq', type=int, default=40960,
                        help='Save model every N steps (default: every 5 updates = 40960 steps)')
     parser.add_argument('--eval_freq', type=int, default=81920,
                        help='Eval every N steps (default: every 10 updates = 81920 steps)')
-    parser.add_argument('--progress_freq', type=int, default=1,
-                       help='How often (in steps) to print progress updates to console (default 1). Set higher to reduce IO.')
+    parser.add_argument('--progress_freq', type=int, default=100,
+                       help='How often (in steps) to print progress updates to console (default 100 for reduced IO)')
     
     # === OTHER ===
     parser.add_argument('--verbose', type=int, default=1,
@@ -443,11 +443,10 @@ def main():
     
     # === PHASE CONFIGURATION ===
     phase_configs = {
-        'phase_a': {'steps': 2_048_000, 'name': 'Phase A: Sanity & Overfit'},
-        'phase_b': {'steps': 4_096_000, 'name': 'Phase B: Curriculum'},
-        'phase_c': {'steps': 4_915_200, 'name': 'Phase C: Full Dataset'},
-        'phase_d': {'steps': 2_048_000, 'name': 'Phase D: Qwen Fine-tune'},
-        'full': {'steps': 13_120_000, 'name': 'Full Training (All Phases)'},
+        'phase_a': {'steps': 57_344, 'name': 'Phase A: Sanity & Overfit (~50K)'},
+        'phase_b': {'steps': 147_456, 'name': 'Phase B: Curriculum (~150K)'},
+        'phase_c': {'steps': 196_608, 'name': 'Phase C: Full Dataset (~200K)'},
+        'full': {'steps': 401_408, 'name': 'Full Training (All 3 Phases ~400K)'},
         'quick': {'steps': 50_000, 'name': 'Quick Test (50K)'},
         'test': {'steps': 10_000, 'name': 'Debug Test (10K)'}
     }
@@ -497,11 +496,16 @@ def main():
     # Disable tokenizer parallelism to avoid fork warnings
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
     
+    # For multi-env: use Gemini backend to avoid loading heavy models in each worker
+    worker_backend = args.llm_backend
     if args.n_envs > 1:
-        print(f"NOTE: Using {args.llm_backend} backend with {args.n_envs} workers...")
-        env = SubprocVecEnv([make_env(i, args.llm_model, args.llm_freq, hf_token, args.llm_backend) 
+        worker_backend = 'gemini'
+        print(f"⚡ SPEED OPTIMIZATION: Using Gemini API backend for {args.n_envs} workers")
+        print(f"   (Avoids loading {args.llm_model} model in each subprocess)")
+        env = SubprocVecEnv([make_env(i, args.llm_model, args.llm_freq, hf_token, worker_backend) 
                             for i in range(args.n_envs)])
     else:
+        print(f"NOTE: Using {args.llm_backend} backend with single environment")
         env = DummyVecEnv([make_env(0, args.llm_model, args.llm_freq, hf_token, args.llm_backend)])
     
     print("✅ Environments created\n")
