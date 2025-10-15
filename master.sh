@@ -1,9 +1,27 @@
 #!/bin/zsh
 
-# Master script for AURORA project combining setup, training, validation, and simulation run commands
+# Master script for AURORA ISEF 2025 - Phased training support
 
 usage() {
     echo "Usage: $0 {setup|train|validate|run} [options]"
+    echo ""
+    echo "Commands:"
+    echo "  setup          - Install dependencies and validate environment"
+    echo "  train          - Train AURORA model with phased training"
+    echo "  validate       - Run validation on trained model"
+    echo "  run            - Run simulation with trained model"
+    echo ""
+    echo "Train Options:"
+    echo "  --phase <name> - Training phase: phase_a, phase_b, phase_c, phase_d, full, quick"
+    echo "  --timesteps N  - Custom number of timesteps (overrides phase)"
+    echo "  --n_envs N     - Number of parallel environments (default: 4)"
+    echo "  --llm_freq N   - LLM guidance frequency (default: 50)"
+    echo ""
+    echo "Examples:"
+    echo "  $0 train --phase full               # All phases (13M steps)"
+    echo "  $0 train --phase phase_a            # Phase A only (2M steps)"
+    echo "  $0 train --phase quick              # Quick test (500K steps)"
+    echo "  $0 train --timesteps 10000000       # Custom 10M steps"
     exit 1
 }
 
@@ -86,71 +104,59 @@ EOF
         ;;
     train)
         echo "============================================================"
-        echo "AURORA Hybrid PPO + Llama-2 Training"
+        echo "🔥 AURORA ISEF 2025 - Hybrid PPO + Qwen Training"
         echo "============================================================"
         echo ""
         
         # Set HuggingFace token
         export HF_TOKEN="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"
         
-        # Training parameters with defaults
-        TIMESTEPS=${1:-10000}  # default 10k timesteps
-        N_ENVS=${2:-1}         # default 1 environment
-        LLM_FREQ=${3:-20}      # LLM guidance every 20 steps
+        # Create logs directory if it doesn't exist
+        mkdir -p logs
         
-        echo "Configuration:"
-        echo "  Timesteps: $TIMESTEPS"
-        echo "  Environments: $N_ENVS"
-        echo "  LLM Frequency: every $LLM_FREQ steps"
-        echo "  Model: meta-llama/Llama-2-7b-chat-hf"
+        # Pass all arguments to train_hybrid.py
+        # This supports --phase, --timesteps, --n_envs, etc.
+        echo "Starting training with arguments: $@"
+        echo "Log file: logs/hybrid_training.log"
         echo ""
         
-        # Check for GPU
-        if command -v nvidia-smi &> /dev/null; then
-            echo "🎮 GPU detected:"
-            nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+        python train_hybrid.py "$@" >> logs/hybrid_training.log 2>&1
+        
+        if [ $? -eq 0 ]; then
             echo ""
+            echo "✅ Training completed successfully!"
+            echo "📂 Model saved to: results/aurora_hybrid_ppo_llm_model/"
+            echo "📊 Training log: logs/hybrid_training.log"
         else
-            echo "⚠️  No GPU detected - will use CPU (slower)"
             echo ""
+            echo "❌ Training failed. Check logs/hybrid_training.log for details."
+            exit 1
         fi
-        
-        echo "Starting training..."
-        echo "============================================================"
-        
-        cd /Users/shauryamallampati/Desktop/ISEF
-        ./.venv/bin/python train_hybrid.py \
-            --timesteps $TIMESTEPS \
-            --n_envs $N_ENVS \
-            --llm_model meta-llama/Llama-3.2-1B-Instruct \
-            --llm_backend gemini \
-            --llm_freq $LLM_FREQ \
-            --hf_token $HF_TOKEN \
-            --verbose 1 >> logs/hybrid_training.log 2>&1
-        
-        echo ""
-        echo "============================================================"
-        echo "Training complete!"
-        echo "Model saved to: results/aurora_hybrid_ppo_llm_model/"
-        echo "Summary: results/hybrid_training_summary.json"
-        echo "============================================================"
         ;;
     validate)
         echo "============================================================"
-        echo "Running quick validation..."
+        echo "🔍 AURORA Model Validation"
         echo "============================================================"
-        if [ -x "./quick_validate.sh" ]; then
-            ./quick_validate.sh
+        echo "Running validation on trained model..."
+        
+        if [ -x "./validate_strict_mode.py" ]; then
+            python validate_strict_mode.py "$@"
         else
-            echo "quick_validate.sh not found or not executable."
+            echo "validate_strict_mode.py not found"
+            echo "Using quick_validate.sh instead..."
+            if [ -x "./quick_validate.sh" ]; then
+                ./quick_validate.sh
+            else
+                echo "❌ No validation script found."
+                exit 1
+            fi
         fi
         ;;
     run)
         echo "============================================================"
-        echo "Running simulation..."
+        echo "🚁 Running AURORA Simulation"
         echo "============================================================"
-        # You may adjust this command to run your simulation as needed
-        python main_enhanced.py
+        python main_enhanced.py "$@"
         ;;
     *)
         usage
