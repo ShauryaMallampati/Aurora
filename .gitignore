@@ -111,3 +111,6 @@ data/real_training_data/
 !requirements.txt
 !README.md
 !SETUP.md 
+node_modules
+*.node
+data/InterAgencyFirePerimeterHistory_All_Years_View_5507083134356011387/*
