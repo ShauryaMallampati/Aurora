@@ -406,8 +406,8 @@ def main():
     
     # === PHASE SELECTION (ISEF-optimized) ===
     parser.add_argument('--phase', type=str, default='full', 
-                       choices=['phase_a', 'phase_b', 'phase_c', 'phase_d', 'full', 'quick'],
-                       help='Training phase: phase_a (2M), phase_b (4M), phase_c (5M), phase_d (2M), full (13M), or quick (500K test)')
+                       choices=['phase_a', 'phase_b', 'phase_c', 'phase_d', 'full', 'quick', 'test'],
+                       help='Training phase: phase_a (2M), phase_b (4M), phase_c (5M), phase_d (2M), full (13M), quick (50K), or test (10K debug)')
     
     # === MANUAL OVERRIDE (if not using phases) ===
     parser.add_argument('--timesteps', type=int, default=None, 
@@ -448,7 +448,8 @@ def main():
         'phase_c': {'steps': 4_915_200, 'name': 'Phase C: Full Dataset'},
         'phase_d': {'steps': 2_048_000, 'name': 'Phase D: Qwen Fine-tune'},
         'full': {'steps': 13_120_000, 'name': 'Full Training (All Phases)'},
-        'quick': {'steps': 500_000, 'name': 'Quick Test (500K)'}
+        'quick': {'steps': 50_000, 'name': 'Quick Test (50K)'},
+        'test': {'steps': 10_000, 'name': 'Debug Test (10K)'}
     }
     
     # Determine timesteps
@@ -491,10 +492,13 @@ def main():
     
     # Create vectorized environments
     print(f"Creating {args.n_envs} parallel hybrid environments...")
-    print("(Each environment has Llama-2 strategic guidance)")
-    print("NOTE: This may take a few minutes to load Llama-2 model...")
+    print(f"(Each environment will use {args.llm_model} for strategic guidance)")
+    
+    # Disable tokenizer parallelism to avoid fork warnings
+    os.environ['TOKENIZERS_PARALLELISM'] = 'false'
     
     if args.n_envs > 1:
+        print(f"NOTE: Using {args.llm_backend} backend with {args.n_envs} workers...")
         env = SubprocVecEnv([make_env(i, args.llm_model, args.llm_freq, hf_token, args.llm_backend) 
                             for i in range(args.n_envs)])
     else:
