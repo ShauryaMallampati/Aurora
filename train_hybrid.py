@@ -432,8 +432,8 @@ def main():
                        help='Save model every N steps (default: every 5 updates = 40960 steps)')
     parser.add_argument('--eval_freq', type=int, default=81920,
                        help='Eval every N steps (default: every 10 updates = 81920 steps)')
-    parser.add_argument('--progress_freq', type=int, default=100,
-                       help='How often (in steps) to print progress updates to console (default 100). Set to 1 to print every step.')
+    parser.add_argument('--progress_freq', type=int, default=1,
+                       help='How often (in steps) to print progress updates to console (default 1). Set higher to reduce IO.')
     
     # === OTHER ===
     parser.add_argument('--verbose', type=int, default=1,

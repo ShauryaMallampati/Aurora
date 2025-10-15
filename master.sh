@@ -120,7 +120,8 @@ EOF
         echo "Log file: logs/hybrid_training.log"
         echo ""
         
-        python train_hybrid.py "$@" >> logs/hybrid_training.log 2>&1
+    # Stream output to both console and log file so interactive per-step updates are visible
+    python train_hybrid.py "$@" 2>&1 | tee -a logs/hybrid_training.log
         
         if [ $? -eq 0 ]; then
             echo ""
