@@ -305,25 +305,34 @@ class HybridRealFireEnv(gym.Env):
 
 
 class TrainingCallback(BaseCallback):
-    """Custom callback with LLM statistics tracking."""
+    """Custom callback with real-time progress, checkpointing, and LLM statistics."""
     
-    def __init__(self, check_freq: int = 1000, total_timesteps: int = 50000, 
-                 hybrid_agent: Optional[HybridPPOLLMAgent] = None, verbose: int = 1):
+    def __init__(self, check_freq: int = 100, save_freq: int = 500, 
+                 total_timesteps: int = 50000, 
+                 hybrid_agent: Optional[HybridPPOLLMAgent] = None, 
+                 save_path: str = "./results/checkpoints/",
+                 verbose: int = 1):
         super().__init__(verbose)
-        self.check_freq = check_freq
+        self.check_freq = check_freq  # Print progress every 100 steps
+        self.save_freq = save_freq    # Save checkpoint every 500 steps
         self.total_timesteps = total_timesteps
         self.hybrid_agent = hybrid_agent
+        self.save_path = _Path(save_path)
+        self.save_path.mkdir(parents=True, exist_ok=True)
         self.episode_rewards = []
         self.episode_lengths = []
         self.start_time = None
+        self.last_save_step = 0
         
     def _on_training_start(self) -> None:
         self.start_time = datetime.now()
-        print(f"\n🚀 Hybrid PPO + LLM Training started at {self.start_time.strftime('%H:%M:%S')}")
+        print(f"\n🚀 Hybrid PPO + Qwen Training started at {self.start_time.strftime('%H:%M:%S')}")
+        print(f"💾 Checkpoints will be saved every {self.save_freq} steps to: {self.save_path}")
         print("="*80)
         
     def _on_step(self) -> bool:
         
+        # Real-time progress updates (every check_freq steps)
         if self.n_calls % self.check_freq == 0:
             # Calculate progress
             progress = (self.n_calls / self.total_timesteps) * 100
@@ -333,24 +342,33 @@ class TrainingCallback(BaseCallback):
             eta_seconds = remaining_steps / steps_per_sec if steps_per_sec > 0 else 0
             eta = str(timedelta(seconds=int(eta_seconds)))
             
-            # Log progress
-            print(f"\n📊 STEP {self.n_calls:,} / {self.total_timesteps:,} ({progress:.1f}%)")
-            print(f"   ⏱️  Speed: {steps_per_sec:.1f} steps/sec | ETA: {eta}")
+            # Real-time console update (on same line)
+            print(f"\r� STEP {self.n_calls:,}/{self.total_timesteps:,} ({progress:.1f}%) | "
+                  f"⏱️ {steps_per_sec:.0f} steps/sec | ETA: {eta}", end='', flush=True)
             
-            if len(self.episode_rewards) > 0:
-                mean_reward = np.mean(self.episode_rewards[-10:])
-                mean_length = np.mean(self.episode_lengths[-10:])
-                print(f"   🎯 Mean reward (last 10 ep): {mean_reward:.2f}")
-                print(f"   📏 Mean episode length: {mean_length:.1f}")
-            
-            # LLM statistics
-            if self.hybrid_agent:
-                stats = self.hybrid_agent.get_statistics()
-                print(f"   🧠 LLM calls: {stats['llm_calls']}, "
-                      f"Tokens: {stats['llm_tokens_used']}, "
-                      f"Errors: {stats['llm_errors']}")
-            
-            print("-"*80)
+            # Detailed log every 1000 steps
+            if self.n_calls % 1000 == 0:
+                print()  # New line for detailed log
+                if len(self.episode_rewards) > 0:
+                    mean_reward = np.mean(self.episode_rewards[-10:])
+                    mean_length = np.mean(self.episode_lengths[-10:])
+                    print(f"   🎯 Mean reward (last 10 ep): {mean_reward:.2f}")
+                    print(f"   📏 Mean episode length: {mean_length:.1f}")
+                
+                # LLM statistics
+                if self.hybrid_agent:
+                    stats = self.hybrid_agent.get_statistics()
+                    print(f"   🧠 LLM calls: {stats['llm_calls']}, "
+                          f"Tokens: {stats['llm_tokens_used']}, "
+                          f"Errors: {stats['llm_errors']}")
+                print("-"*80)
+        
+        # Save checkpoint every save_freq steps
+        if self.n_calls > 0 and self.n_calls % self.save_freq == 0 and self.n_calls != self.last_save_step:
+            self.last_save_step = self.n_calls
+            checkpoint_path = self.save_path / f"checkpoint_step_{self.n_calls}"
+            self.model.save(str(checkpoint_path))
+            print(f"\n💾 Checkpoint saved at step {self.n_calls:,} → {checkpoint_path}")
         
         return True
     
@@ -482,30 +500,66 @@ def main():
     
     print("✅ Environments created\n")
     
-    # Create PPO model (larger network for richer observations)
-    print("Initializing Hybrid PPO model...")
-    model = PPO(
-        "MlpPolicy",
-        env,
-        learning_rate=3e-4,
-        n_steps=2048,
-        batch_size=64,
-        n_epochs=10,
-        gamma=0.99,
-        gae_lambda=0.95,
-        clip_range=0.2,
-        verbose=args.verbose,
-        policy_kwargs=dict(net_arch=[256, 256, 128]),  # Larger network for hybrid
-        tensorboard_log=None
-    )
+    # Check for existing checkpoints (resume capability)
+    checkpoint_dir = _Path("./results/checkpoints/")
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
     
-    print("✅ Model initialized\n")
+    # Find latest checkpoint
+    checkpoints = sorted(checkpoint_dir.glob("checkpoint_step_*"))
+    latest_checkpoint = None
+    resume_step = 0
     
-    # Create callback
+    if checkpoints:
+        latest_checkpoint = checkpoints[-1]
+        # Extract step number from checkpoint name
+        try:
+            resume_step = int(latest_checkpoint.name.split("_")[-1])
+            print(f"🔄 Found checkpoint at step {resume_step:,}: {latest_checkpoint}")
+            user_input = input(f"   Resume from step {resume_step:,}? (y/n): ").strip().lower()
+            if user_input != 'y':
+                latest_checkpoint = None
+                resume_step = 0
+                print("   Starting fresh training from step 0")
+            else:
+                print(f"   ✅ Resuming from step {resume_step:,}")
+        except (ValueError, IndexError):
+            print(f"⚠️  Could not parse checkpoint name: {latest_checkpoint}")
+            latest_checkpoint = None
+    
+    # Create or load PPO model
+    if latest_checkpoint and resume_step > 0:
+        print(f"Loading model from checkpoint: {latest_checkpoint}")
+        model = PPO.load(str(latest_checkpoint), env=env)
+        # Adjust total timesteps to account for already-trained steps
+        remaining_timesteps = max(0, args.timesteps - resume_step)
+        print(f"✅ Model loaded - will train for {remaining_timesteps:,} more steps")
+        print(f"   (Total target: {args.timesteps:,}, Already trained: {resume_step:,})\n")
+        args.timesteps = remaining_timesteps
+    else:
+        print("Initializing new Hybrid PPO model...")
+        model = PPO(
+            "MlpPolicy",
+            env,
+            learning_rate=3e-4,
+            n_steps=2048,
+            batch_size=64,
+            n_epochs=10,
+            gamma=0.99,
+            gae_lambda=0.95,
+            clip_range=0.2,
+            verbose=args.verbose,
+            policy_kwargs=dict(net_arch=[256, 256, 128]),  # Larger network for hybrid
+            tensorboard_log=None
+        )
+        print("✅ Model initialized\n")
+    
+    # Create callback with real-time progress and checkpointing
     # Note: hybrid_agent will be accessed through env, stats collected separately
     callback = TrainingCallback(
-        check_freq=2000, 
+        check_freq=100,           # Print progress every 100 steps (real-time)
+        save_freq=500,            # Save checkpoint every 500 steps
         total_timesteps=args.timesteps, 
+        save_path="./results/checkpoints/",
         verbose=1
     )
     
