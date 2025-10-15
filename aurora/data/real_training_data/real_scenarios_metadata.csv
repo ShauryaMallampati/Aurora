@@ -1,4 +1,0 @@
-scenario_id,location_key,location_name,date_range_start,date_range_end,total_real_fires,latitude,longitude,data_sources,real_data_only
-real_california_2023_20250726_225648,california_2023,California Wildfires 2023,2023-01-01,2023-12-31,150,36.7783,-119.4179,"NASA FIRMS, NOAA Weather, USGS Elevation",True
-real_australia_2020_20250726_225650,australia_2020,Australian Bushfires 2020,2020-01-01,2020-12-31,200,-25.2744,133.7751,"NASA FIRMS, NOAA Weather, USGS Elevation",True
-real_amazon_2019_20250726_225651,amazon_2019,Amazon Rainforest Fires 2019,2019-01-01,2019-12-31,100,-3.4653,-58.3804,"NASA FIRMS, NOAA Weather, USGS Elevation",True

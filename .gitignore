@@ -21,27 +21,14 @@ wheels/
 *.egg
 MANIFEST
 
-# Virtual Environment
-.venv/
+# Virtual environments
+.env
+.venv
+env/
 venv/
 ENV/
-env/
-
-# PyTorch
-*.pth
-*.pt
-*.ckpt
-*.zip
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+env.bak/
+venv.bak/
 
 # IDE
 .vscode/
@@ -59,22 +46,46 @@ env/
 ehthumbs.db
 Thumbs.db
 
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
 # Logs
 *.log
 logs/
-results/logs/
+training.log
 
-# Data files (large datasets)
-*.shp
-*.dbf
-*.shx
-*.prj
-*.cpg
-Fire_Data/
+# Model files (large files)
+*.zip
+*.pth
+*.pkl
+*.h5
+*.hdf5
+*.model
+*.weights
 
-# Model checkpoints (large files)
-ppo_aurora_agent.zip
-ppo_aurora_enhanced.zip
+# Data files
+*.npz
+*.npy
+*.csv
+*.json
+*.xml
+*.tiff
+*.tif
+
+# Results and outputs
+results/frame_*.png
+results/enhanced_frame_*.png
+results/enhanced_analysis_*.png
+results/logs/*.json
+results/tensorboard_logs/
+results/phase3_logs/
+
+# Cache
+.cache/
+*.cache
 
 # Temporary files
 *.tmp
@@ -82,15 +93,21 @@ ppo_aurora_enhanced.zip
 temp/
 tmp/
 
-# Matplotlib
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.svg
-results/*.png
-results/*.jpg
+# API keys and secrets
+.env
+secrets.json
+config.json
 
-# Simulation outputs
-results/simulation_*.json
-results/training_*.json 
+# Large data directories
+Fire_Data/
+data/real_data_cache/
+data/massive_training_data/
+data/real_training_data/
+
+# Keep essential files
+!data/terrain_map.npy
+!results/best_model/
+!results/*.html
+!requirements.txt
+!README.md
+!SETUP.md 
