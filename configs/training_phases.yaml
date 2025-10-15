@@ -17,13 +17,15 @@ ppo_defaults:
 
 # Checkpointing & Evaluation
 checkpoint:
+  save_every_steps: 500        # Save every 500 steps for resume capability
   save_every_updates: 5
-  keep_top_n: 5
+  keep_top_n: 10               # Keep more checkpoints for safety
   eval_every_updates: 10
+  enable_resume: true          # Allow resuming from last checkpoint
   
 eval_splits:
-  temporal: "years_2020_2024"  # Held-out recent years
-  geographic: "CA_WA_OR"       # Held-out western states
+  temporal: "all_years"        # Use all years (1308-2024)
+  geographic: "all_us_states"  # Use all US states (no holdout)
 
 # Metrics to Track
 metrics:
@@ -52,7 +54,7 @@ phase_a:
   
   # LLM settings
   llm_cadence: 50  # Guidance every 50 steps
-  llm_model: "Qwen/Qwen2.5-7B-Instruct"
+  llm_model: "Qwen/Qwen2.5-1.5B-Instruct"  # Lightweight 1.5B model
   
   # Reward weights
   reward_weights:
@@ -88,6 +90,7 @@ phase_b:
   horizon: 150  # Longer episodes
   
   # LLM settings
+  llm_model: "Qwen/Qwen2.5-1.5B-Instruct"  # Lightweight 1.5B model
   llm_cadence: 50  # Keep at 50, move to 75 if too frequent
   llm_cache_enabled: true
   cache_by: ["fire_id", "t_bucket", "wind_regime"]
@@ -132,6 +135,7 @@ phase_c:
   sample_states: "all_except_holdout"
   
   # LLM settings
+  llm_model: "Qwen/Qwen2.5-1.5B-Instruct"  # Lightweight 1.5B model
   llm_cadence: 50
   llm_cache_enabled: true
   cache_target_hit_rate: 0.60
@@ -171,6 +175,7 @@ phase_d:
   balanced_sampling: true
   
   # LLM settings (optional: reduce cadence on complex scenarios)
+  llm_model: "Qwen/Qwen2.5-1.5B-Instruct"  # Lightweight 1.5B model
   llm_cadence: 40  # More frequent guidance
   llm_cache_enabled: true
   
