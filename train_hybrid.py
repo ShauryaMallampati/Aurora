@@ -384,44 +384,89 @@ def make_env(rank: int, llm_model: str, llm_freq: int, hf_token: str, llm_backen
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Train Hybrid PPO + Llama-2 on real fire data')
-    parser.add_argument('--timesteps', type=int, default=50000, 
-                       help='Total training timesteps')
-    parser.add_argument('--n_envs', type=int, default=2, 
-                       help='Number of parallel environments (reduce for GPU memory)')
-    parser.add_argument('--llm_model', type=str, default='meta-llama/Llama-2-7b-chat-hf',
-                       help='HuggingFace LLM model ID')
-    parser.add_argument('--llm_freq', type=int, default=20,
-                       help='Steps between LLM guidance requests (increase to reduce GPU load)')
+    parser = argparse.ArgumentParser(description='Train Hybrid PPO + Llama-2 on real fire data - ISEF 2025')
+    
+    # === PHASE SELECTION (ISEF-optimized) ===
+    parser.add_argument('--phase', type=str, default='full', 
+                       choices=['phase_a', 'phase_b', 'phase_c', 'phase_d', 'full', 'quick'],
+                       help='Training phase: phase_a (2M), phase_b (4M), phase_c (5M), phase_d (2M), full (13M), or quick (500K test)')
+    
+    # === MANUAL OVERRIDE (if not using phases) ===
+    parser.add_argument('--timesteps', type=int, default=None, 
+                       help='Total training timesteps (overrides phase setting)')
+    
+    # === ENVIRONMENT SETTINGS ===
+    parser.add_argument('--n_envs', type=int, default=4, 
+                       help='Number of parallel environments (4 recommended, 8192 steps/update)')
+    
+    # === LLM SETTINGS ===
+    parser.add_argument('--llm_model', type=str, default='Qwen/Qwen2.5-7B-Instruct',
+                       help='HuggingFace LLM model ID (Qwen recommended for ISEF)')
+    parser.add_argument('--llm_freq', type=int, default=50,
+                       help='Steps between LLM guidance (50 recommended, 75 if too frequent)')
     parser.add_argument('--hf_token', type=str, default=None,
                        help='HuggingFace API token (or set HF_TOKEN env var)')
     parser.add_argument('--llm_backend', type=str, default='transformers',
                        help='LLM backend to use: transformers or gemini')
-    parser.add_argument('--save_freq', type=int, default=50000,
-                       help='Save model every N steps')
+    
+    # === CHECKPOINTING & EVALUATION ===
+    parser.add_argument('--save_freq', type=int, default=40960,
+                       help='Save model every N steps (default: every 5 updates = 40960 steps)')
+    parser.add_argument('--eval_freq', type=int, default=81920,
+                       help='Eval every N steps (default: every 10 updates = 81920 steps)')
+    
+    # === OTHER ===
     parser.add_argument('--verbose', type=int, default=1,
                        help='Verbosity level')
     
     args = parser.parse_args()
+    
+    # === PHASE CONFIGURATION ===
+    phase_configs = {
+        'phase_a': {'steps': 2_048_000, 'name': 'Phase A: Sanity & Overfit'},
+        'phase_b': {'steps': 4_096_000, 'name': 'Phase B: Curriculum'},
+        'phase_c': {'steps': 4_915_200, 'name': 'Phase C: Full Dataset'},
+        'phase_d': {'steps': 2_048_000, 'name': 'Phase D: Qwen Fine-tune'},
+        'full': {'steps': 13_120_000, 'name': 'Full Training (All Phases)'},
+        'quick': {'steps': 500_000, 'name': 'Quick Test (500K)'}
+    }
+    
+    # Determine timesteps
+    if args.timesteps:
+        total_timesteps = args.timesteps
+        phase_name = f'Custom ({args.timesteps:,} steps)'
+    else:
+        config = phase_configs[args.phase]
+        total_timesteps = config['steps']
+        phase_name = config['name']
+    
+    args.timesteps = total_timesteps
     
     # Get HF token from args or env
     hf_token = args.hf_token or os.getenv("HF_TOKEN")
     if not hf_token:
         print("⚠️  WARNING: No HuggingFace token provided!")
         print("   Set HF_TOKEN environment variable or use --hf_token argument")
-        print("   Without token, will use heuristic fallback instead of Llama-2")
+        print("   Without token, will use heuristic fallback instead of Qwen")
         print()
     
     print("\n" + "="*80)
-    print("HYBRID PPO + LLAMA-2 TRAINING WITH REAL FIRE DATA")
+    print("🔥 AURORA ISEF 2025 - HYBRID PPO + QWEN TRAINING")
     print("="*80)
+    print(f"Phase: {phase_name}")
     print(f"Total timesteps: {args.timesteps:,}")
-    print(f"Parallel environments: {args.n_envs}")
+    print(f"Updates planned: {args.timesteps // (2048 * args.n_envs)}")
+    print(f"Steps per update: {2048 * args.n_envs:,} (n_steps=2048 × n_envs={args.n_envs})")
+    print(f"Estimated wall time: {(args.timesteps / 200_000):.1f} - {(args.timesteps / 150_000):.1f} hours")
+    print(f"\nEnvironments: {args.n_envs} parallel")
     print(f"LLM model: {args.llm_model}")
     print(f"LLM guidance frequency: every {args.llm_freq} steps")
     print(f"HF token: {'✅ Provided' if hf_token else '❌ Missing (will use heuristic)'}")
     print(f"LLM backend: {args.llm_backend}")
-    print(f"Save frequency: {args.save_freq:,}")
+    print(f"\nCheckpointing:")
+    print(f"  Save frequency: every {args.save_freq // (2048 * args.n_envs)} updates ({args.save_freq:,} steps)")
+    print(f"  Eval frequency: every {args.eval_freq // (2048 * args.n_envs)} updates ({args.eval_freq:,} steps)")
+    print("\n📊 Real Fire Data: 116,337 fires from InterAgency Fire Perimeter History")
     print("="*80 + "\n")
     
     # Create vectorized environments
