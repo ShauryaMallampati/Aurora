@@ -278,9 +278,30 @@ Focus on:
             return guidance
             
         except Exception as e:
-            print(f"⚠️  LLM error: {e}")
+            print(f"\n{'='*80}")
+            print(f"❌ CRITICAL LLM ERROR - STOPPING EXECUTION FOR DEBUGGING")
+            print(f"{'='*80}")
+            print(f"Error: {e}")
+            print(f"LLM Model: {self.llm_model}")
+            print(f"LLM Backend: {self.llm_backend}")
+            print(f"Step: {step}")
+            print(f"Response text received (last 500 chars):")
+            if 'response_text' in locals():
+                print(response_text[-500:])
+            else:
+                print("(No response text - error occurred before LLM call)")
+            print(f"{'='*80}\n")
+            
+            import traceback
+            traceback.print_exc()
+            
             self.llm_errors += 1
-            return self._fallback_strategy(fire_state, drone_positions, drone_states)
+            
+            # STOP execution instead of falling back - this lets us debug
+            raise RuntimeError(f"LLM guidance failed: {e}") from e
+            
+            # Old fallback behavior (commented out for debugging):
+            # return self._fallback_strategy(fire_state, drone_positions, drone_states)
 
     def _call_gemini(self, prompt: str) -> str:
         """Call Google Gemini / Generative Language API (text-bison endpoint).
