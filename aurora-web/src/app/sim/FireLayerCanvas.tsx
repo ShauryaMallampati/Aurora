@@ -54,8 +54,16 @@ export function FireLayerCanvas({ tick, map }: FireLayerCanvasProps) {
       }
 
       onRemove() {
-        if (this.canvas.parentNode) {
-          this.canvas.parentNode.removeChild(this.canvas);
+        try {
+          if (this.canvas && this.canvas.parentNode) {
+            try {
+              this.canvas.parentNode.removeChild(this.canvas);
+            } catch (e) {
+              // Already removed
+            }
+          }
+        } catch (error) {
+          // Canvas or parentNode doesn't exist, ignore
         }
       }
     }
@@ -78,8 +86,14 @@ export function FireLayerCanvas({ tick, map }: FireLayerCanvasProps) {
     overlayRef.current = overlay;
 
     return () => {
-      if (overlayRef.current) {
-        overlayRef.current.setMap(null);
+      try {
+        if (overlayRef.current) {
+          overlayRef.current.setMap(null);
+        }
+      } catch (error) {
+        // Overlay already removed, ignore
+      } finally {
+        overlayRef.current = null;
       }
     };
   }, [tick, map]);
@@ -117,7 +131,25 @@ function renderFireGrid(canvas: HTMLCanvasElement, grid: number[][]) {
   // Clear canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Render each cell
+  // First pass: render glow effect for high-intensity fires
+  ctx.filter = 'blur(2px)';
+  for (let i = 0; i < height; i++) {
+    for (let j = 0; j < width; j++) {
+      const intensity = grid[i][j];
+      if (intensity > 0.3) {
+        const glowColor = getFireColor(Math.min(1, intensity + 0.2));
+        ctx.fillStyle = glowColor;
+        ctx.globalAlpha = 0.5;
+        ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
+      }
+    }
+  }
+  
+  // Reset filter for sharp rendering
+  ctx.filter = 'none';
+  ctx.globalAlpha = 1.0;
+
+  // Second pass: render cells with full intensity
   for (let i = 0; i < height; i++) {
     for (let j = 0; j < width; j++) {
       const intensity = grid[i][j];
@@ -125,6 +157,18 @@ function renderFireGrid(canvas: HTMLCanvasElement, grid: number[][]) {
         const color = getFireColor(intensity);
         ctx.fillStyle = color;
         ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
+        
+        // Add bright spot at very high intensity
+        if (intensity > 0.8) {
+          ctx.fillStyle = 'rgba(255, 255, 100, 0.6)';
+          const spotSize = cellWidth * 0.6;
+          ctx.fillRect(
+            j * cellWidth + (cellWidth - spotSize) / 2,
+            i * cellHeight + (cellHeight - spotSize) / 2,
+            spotSize,
+            spotSize
+          );
+        }
       }
     }
   }
@@ -134,21 +178,33 @@ function getFireColor(intensity: number): string {
   // Intensity: 0 (none) to 1 (max)
   const clamped = Math.max(0, Math.min(1, intensity));
   
-  if (clamped < 0.33) {
-    // Orange
+  if (clamped < 0.2) {
+    // Light yellow to orange (low fire)
+    const t = clamped / 0.2;
     const r = 255;
-    const g = Math.floor(165 + (255 - 165) * (clamped / 0.33));
-    return `rgb(${r}, ${g}, 0)`;
-  } else if (clamped < 0.66) {
-    // Orange to red
-    const t = (clamped - 0.33) / 0.33;
+    const g = Math.floor(200 + (100 - 200) * t);
+    const b = 0;
+    return `rgb(${r}, ${g}, ${b})`;
+  } else if (clamped < 0.5) {
+    // Orange to bright orange-red (medium fire)
+    const t = (clamped - 0.2) / 0.3;
     const r = 255;
-    const g = Math.floor(165 * (1 - t));
-    return `rgb(${r}, ${g}, 0)`;
+    const g = Math.floor(100 + (80 - 100) * t);
+    const b = 0;
+    return `rgb(${r}, ${g}, ${b})`;
+  } else if (clamped < 0.75) {
+    // Red to dark red (high fire)
+    const t = (clamped - 0.5) / 0.25;
+    const r = 255;
+    const g = Math.floor(80 - 80 * t);
+    const b = 0;
+    return `rgb(${r}, ${g}, ${b})`;
   } else {
-    // Red to dark red
-    const t = (clamped - 0.66) / 0.34;
+    // Dark red to maroon (extreme fire)
+    const t = (clamped - 0.75) / 0.25;
     const r = Math.floor(255 - 100 * t);
-    return `rgb(${r}, 0, 0)`;
+    const g = 0;
+    const b = 0;
+    return `rgb(${r}, ${g}, ${b})`;
   }
 }

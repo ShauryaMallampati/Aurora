@@ -111,12 +111,14 @@ class HybridRealFireEnv(gym.Env):
                 )
                 
                 # Initialize fire simulation with real data
+                initial_fire = self.current_scenario['initial_fire_grid'].astype(np.uint8)
+                
                 self.fire_sim = FireSim(
                     grid_size=self.grid_size
                 )
                 
-                # Set fire grid from real perimeter
-                self.fire_sim.fire_state = self.current_scenario['initial_fire_grid'].astype(np.uint8)
+                # Reset with real fire grid
+                self.fire_sim.reset(initial_fire_grid=initial_fire)
                 
                 # Set weather from NOAA data
                 weather = self.current_scenario['weather']
@@ -136,11 +138,22 @@ class HybridRealFireEnv(gym.Env):
                 self.fire_sim.elevation = (terrain['elevation'] / 3000.0).astype(np.float32)
                 self.fire_sim.fuel_density = (0.7 + terrain['slope'] * 0.3).astype(np.float32)
                 
+                # Assert all rasters align
+                expected_shape = (self.grid_size, self.grid_size)
+                assert self.fire_sim.fire_state.shape == expected_shape, f"Fire grid shape mismatch: {self.fire_sim.fire_state.shape} != {expected_shape}"
+                assert self.fire_sim.elevation.shape == expected_shape, f"Elevation shape mismatch: {self.fire_sim.elevation.shape} != {expected_shape}"
+                assert self.fire_sim.fuel_density.shape == expected_shape, f"Fuel density shape mismatch: {self.fire_sim.fuel_density.shape} != {expected_shape}"
+                
             except Exception as e:
                 print(f"⚠️  Error loading real scenario: {e}")
-                self._reset_simple()
+                # STRICT MODE: No synthetic fallback - retry with another real scenario
+                if self.integrator:
+                    print("   Retrying with another random real scenario...")
+                    return self.reset(seed=seed)
+                else:
+                    raise RuntimeError("No integrator available and synthetic fallback disabled")
         else:
-            self._reset_simple()
+            raise RuntimeError("No real data integrator provided - cannot proceed without real data")
         
         # Initialize drones at random positions
         self.drones = []
