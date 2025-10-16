@@ -19,8 +19,32 @@ export class SimulationStream {
   private onGuidanceCallback: ((guidance: LLMGuidance) => void) | null = null;
   private onErrorCallback: ((error: Error) => void) | null = null;
   private onCompleteCallback: (() => void) | null = null;
+  private intervalId: NodeJS.Timeout | null = null;
+  public playbackSpeed: number = 1;
+  private isPaused: boolean = false;
+  private config: SimulationConfig | null = null;
 
   constructor(private sseUrl: string, private useMock: boolean = false) {}
+
+  setPlaybackSpeed(speed: number) {
+    this.playbackSpeed = speed;
+    // If already running, restart with new speed
+    if (this.intervalId && this.useMock) {
+      this.restartMockStream();
+    }
+  }
+
+  setConfig(config: SimulationConfig) {
+    this.config = config;
+  }
+
+  pause() {
+    this.isPaused = true;
+  }
+
+  resume() {
+    this.isPaused = false;
+  }
 
   onTick(callback: (tick: TelemetryTick) => void) {
     this.onTickCallback = callback;
@@ -84,37 +108,64 @@ export class SimulationStream {
       this.eventSource.close();
       this.eventSource = null;
     }
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
   }
 
   // Mock stream for offline demo
+  private currentStep = 0;
+  
   private startMockStream() {
-    let t = 0;
-    const maxSteps = 150;
+    this.currentStep = 0;
+    this.restartMockStream();
+  }
 
-    const interval = setInterval(() => {
-      if (t >= maxSteps) {
+  private restartMockStream() {
+    // Clear existing interval
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
+
+    const maxSteps = this.config?.maxSteps || 150;
+
+    const tick = () => {
+      // Handle pause
+      if (this.isPaused) {
+        return;
+      }
+
+      if (this.currentStep >= maxSteps) {
         this.onCompleteCallback?.();
-        clearInterval(interval);
+        if (this.intervalId) clearInterval(this.intervalId);
         return;
       }
 
       // Generate mock tick
-      const tick = this.generateMockTick(t, maxSteps);
-      this.onTickCallback?.(tick);
+      const tickData = this.generateMockTick(this.currentStep, maxSteps);
+      this.onTickCallback?.(tickData);
 
       // Generate mock guidance every 50 steps
-      if (t % 50 === 0 && t > 0) {
-        const guidance = this.generateMockGuidance(t);
+      if (this.currentStep % 50 === 0 && this.currentStep > 0) {
+        const guidance = this.generateMockGuidance(this.currentStep);
         this.onGuidanceCallback?.(guidance);
       }
 
-      t++;
-    }, 100); // 10 Hz
+      this.currentStep++;
+    };
+
+    // Start interval with speed adjustment
+    const baseInterval = 100; // 10 Hz base
+    this.intervalId = setInterval(tick, baseInterval / this.playbackSpeed);
   }
 
   private generateMockTick(t: number, maxSteps: number): TelemetryTick {
     const gridSize = 64;
-    const numDrones = 3;
+    const numDrones = this.config?.numDrones || 3;
+    
+    // Get fire origin from config or use default California
+    const fireOrigin = this.getFireOrigin();
 
     // Generate mock fire grid (2D array, base64 encoded JSON)
     const fireGrid: number[][] = [];
@@ -125,8 +176,9 @@ export class SimulationStream {
         const centerY = 32;
         const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
         
-        // Fire starts large and shrinks as drones suppress it
-        const fireRadius = 18 - t * 0.12;
+        // Fire starts large and shrinks as drones suppress it (more drones = faster suppression)
+        const suppressionRate = 0.12 * (numDrones / 3); // Scale with drone count
+        const fireRadius = 18 - t * suppressionRate;
         const intensity = Math.max(0, 1 - (dist / fireRadius));
         
         // Add noise for realistic fire
@@ -142,11 +194,11 @@ export class SimulationStream {
     }
     const fireBase64 = btoa(JSON.stringify(fireGrid));
 
-    // Generate mock drones
+    // Generate mock drones using actual fire origin
     const drones: Drone[] = Array.from({ length: numDrones }, (_, i) => ({
       id: i,
-      lat: 36.7783 + (Math.sin((t + i * 120) / 10) * 15) / 111,
-      lng: -119.4179 + (Math.cos((t + i * 120) / 10) * 15) / (111 * Math.cos((36.7783 * Math.PI) / 180)),
+      lat: fireOrigin.lat + (Math.sin((t + i * 120) / 10) * 15) / 111,
+      lng: fireOrigin.lng + (Math.cos((t + i * 120) / 10) * 15) / (111 * Math.cos((fireOrigin.lat * Math.PI) / 180)),
       battery: Math.max(0.2, 1 - t / maxSteps),
       water: Math.max(0, 0.8 - (t / maxSteps) * 1.2),
       action: ['drop', 'scout', 'idle'][i % 3],
@@ -172,7 +224,7 @@ export class SimulationStream {
         firePerimeter: Math.sqrt(burningCells) * 0.1,
         containment: Math.min(1, t / 100),
         avgIntensity: fireGrid.flat().reduce((sum, v) => sum + v, 0) / totalCells,
-        waterDropped: t * 3.5,
+        waterDropped: t * numDrones * 1.5, // Scale with drone count
       },
       events: t % 10 === 0 ? [{
         type: 'drop',
@@ -182,8 +234,60 @@ export class SimulationStream {
         message: `Drone ${(t / 10) % numDrones} deployed water`,
       }] : [],
       fireGrid: fireBase64,
-      fireOrigin: { lat: 36.7783, lng: -119.4179 },
+      fireOrigin,
     };
+  }
+
+  private getFireOrigin(): { lat: number; lng: number } {
+    // Default to California
+    const defaultOrigin = { lat: 36.7783, lng: -119.4179 };
+    
+    if (!this.config?.scenarioId || this.config.scenarioId === 'random') {
+      console.log('🗺️ Using default fire origin:', defaultOrigin);
+      return defaultOrigin;
+    }
+
+    // Map of fire scenario IDs to their coordinates
+    const fireLocations: Record<string, { lat: number; lng: number }> = {
+      'smokehouse-2024': { lat: 35.8374, lng: -100.6657 },
+      'dixie-2021': { lat: 40.211, lng: -121.0471 },
+      'august-complex-2020': { lat: 39.7761, lng: -122.8957 },
+      'creek-2020': { lat: 37.325, lng: -119.2788 },
+      'scu-2020': { lat: 37.3516, lng: -121.4472 },
+      'ranch-2018': { lat: 39.2873, lng: -122.768 },
+      'thomas-2017': { lat: 34.4503, lng: -119.2869 },
+      'biscuit-2002': { lat: 42.2955, lng: -123.9138 },
+      'bootleg-2021': { lat: 42.629, lng: -121.0759 },
+      'elk-mountain-2007': { lat: 42.1758, lng: -115.3158 },
+      'long-draw-2012': { lat: 42.4395, lng: -117.6385 },
+      'holloway-2012': { lat: 42.0118, lng: -118.2537 },
+      'wallow-2011': { lat: 33.7986, lng: -109.2994 },
+      'rodeo-chediski-2002': { lat: 34.2337, lng: -110.4651 },
+      'whitewater-baldy-2012': { lat: 33.335, lng: -108.5955 },
+      'hermits-peak-2022': { lat: 35.8164, lng: -105.3385 },
+      'black-2022': { lat: 33.207, lng: -107.8878 },
+      'park-2024': { lat: 40.1171, lng: -121.7987 },
+      'i40-2006': { lat: 35.2973, lng: -100.6239 },
+      'martin-2018': { lat: 41.6021, lng: -116.9758 },
+      'milford-flat-2007': { lat: 38.6928, lng: -112.7377 },
+      'rush-2012': { lat: 40.6137, lng: -120.0921 },
+      'north-fork-1988': { lat: 44.7064, lng: -110.8147 },
+      'clover-mist-1988': { lat: 44.7393, lng: -109.9855 },
+      'mustang-2012': { lat: 45.4581, lng: -114.4401 },
+      'fire-1910': { lat: 46.4347, lng: -115.1796 },
+      'fire-1919': { lat: 46.0566, lng: -115.4081 },
+      'hopkins-2020': { lat: 40.2077, lng: -123.2511 },
+      'claremont-2020': { lat: 39.7289, lng: -121.196 },
+      'hennessey-2020': { lat: 38.6181, lng: -122.239 },
+      'durkee-2024': { lat: 44.3819, lng: -117.4845 },
+      'rock-house-2011': { lat: 30.6873, lng: -103.9334 },
+      'long-butte-2010': { lat: 42.6652, lng: -115.1636 },
+      'saddle-draw-2014': { lat: 43.3028, lng: -118.0967 },
+    };
+
+    const location = fireLocations[this.config.scenarioId] || defaultOrigin;
+    console.log(`🗺️ Fire origin for ${this.config.scenarioId}:`, location);
+    return location;
   }
 
   private generateMockGuidance(t: number): LLMGuidance {

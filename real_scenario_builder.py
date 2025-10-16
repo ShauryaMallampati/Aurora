@@ -71,7 +71,11 @@ warnings.filterwarnings('ignore')
 
 # Add data directory to path for imports
 sys.path.insert(0, str(DATA_ROOT))
-from fire_perimeter_loader import FirePerimeterLoader
+try:
+    from fire_perimeter_loader import FirePerimeterLoader
+except:
+    # Fallback to non-LFS version
+    from fire_perimeter_loader_real import FirePerimeterLoader
 from real_data_integration_complete import RealDataIntegrator
 
 
