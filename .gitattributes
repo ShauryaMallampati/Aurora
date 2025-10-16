@@ -1,3 +1,15 @@
+# Track large data folders and common large binary formats
+/data/** filter=lfs diff=lfs merge=lfs -text
+/results/** filter=lfs diff=lfs merge=lfs -text
+/env/** filter=lfs diff=lfs merge=lfs -text
+**/*.pth filter=lfs diff=lfs merge=lfs -text
+**/*.pt filter=lfs diff=lfs merge=lfs -text
+**/*.npy filter=lfs diff=lfs merge=lfs -text
+**/*.npz filter=lfs diff=lfs merge=lfs -text
+**/*.zip filter=lfs diff=lfs merge=lfs -text
+**/*.shp filter=lfs diff=lfs merge=lfs -text
+**/*.dbf filter=lfs diff=lfs merge=lfs -text
+**/*.shx filter=lfs diff=lfs merge=lfs -text
 data/** filter=lfs diff=lfs merge=lfs -text
 results/** filter=lfs diff=lfs merge=lfs -text
 env/** filter=lfs diff=lfs merge=lfs -text
