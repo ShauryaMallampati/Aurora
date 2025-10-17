@@ -44,7 +44,7 @@ class HybridPPOLLMAgent:
     
     def __init__(self,
                  llm_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
-                 llm_guidance_frequency: int = 10,
+                 llm_guidance_frequency: int = 500,
                  temperature: float = 0.7,
                  hf_token: Optional[str] = None,
                  llm_backend: str = "transformers",
@@ -245,15 +245,34 @@ Focus on:
             else:
                 json_text = response_text
             
-            # Try to extract JSON
+            # Try to extract JSON with improved regex and fallback
             import re
+            # First try: match balanced braces
             json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', json_text, re.DOTALL)
+            guidance = None
+            
             if json_match:
-                json_str = json_match.group(0)
-                guidance = json.loads(json_str)
-            else:
-                # Fallback if no JSON found
-                raise ValueError("No valid JSON in response")
+                try:
+                    json_str = json_match.group(0)
+                    guidance = json.loads(json_str)
+                except json.JSONDecodeError:
+                    pass
+            
+            # If first regex failed, try to find the first { and last }
+            if not guidance:
+                start_idx = json_text.find('{')
+                end_idx = json_text.rfind('}')
+                if start_idx >= 0 and end_idx > start_idx:
+                    try:
+                        json_str = json_text[start_idx:end_idx+1]
+                        guidance = json.loads(json_str)
+                    except json.JSONDecodeError:
+                        pass
+            
+            # If still no valid JSON, fall back to heuristic strategy
+            if not guidance:
+                self.llm_errors += 1
+                return self._fallback_strategy(fire_state, drone_positions, drone_states)
             
             # Update statistics
             self.llm_calls += 1
@@ -267,35 +286,14 @@ Focus on:
             guidance['step'] = step
             self.guidance_history.append(guidance)
             
-            print(f"🧠 Llama Strategy: {guidance.get('resource_strategy', 'N/A')} - {guidance.get('reasoning', 'N/A')[:80]}...")
+            print(f"🧠 Qwen Strategy: {guidance.get('resource_strategy', 'N/A')} - {guidance.get('reasoning', 'N/A')[:80]}...")
             
             return guidance
             
         except Exception as e:
-            print(f"\n{'='*80}")
-            print(f"❌ CRITICAL LLM ERROR - STOPPING EXECUTION FOR DEBUGGING")
-            print(f"{'='*80}")
-            print(f"Error: {e}")
-            print(f"LLM Model: {self.llm_model}")
-            print(f"LLM Backend: {self.llm_backend}")
-            print(f"Step: {step}")
-            print(f"Response text received (last 500 chars):")
-            if 'response_text' in locals():
-                print(response_text[-500:])
-            else:
-                print("(No response text - error occurred before LLM call)")
-            print(f"{'='*80}\n")
-            
-            import traceback
-            traceback.print_exc()
-            
+            # On any other error, use fallback instead of stopping
             self.llm_errors += 1
-            
-            # STOP execution instead of falling back - this lets us debug
-            raise RuntimeError(f"LLM guidance failed: {e}") from e
-            
-            # Old fallback behavior (commented out for debugging):
-            # return self._fallback_strategy(fire_state, drone_positions, drone_states)
+            return self._fallback_strategy(fire_state, drone_positions, drone_states)
 
     # Gemini API support has been intentionally removed from the codebase.
     # If external API-based backends are required in future, implement them

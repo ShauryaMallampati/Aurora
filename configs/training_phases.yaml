@@ -53,7 +53,7 @@ phase_a:
   wind_speed_range: [0, 15]
   
   # LLM settings (less frequent for speed)
-  llm_cadence: 100  # Guidance every 100 steps (reduced from 50)
+  llm_cadence: 500  # Guidance every 500 steps (reduced from 50)
   llm_model: "Qwen/Qwen2.5-1.5B-Instruct"  # Lightweight 1.5B model
   
   # Reward weights
@@ -91,7 +91,7 @@ phase_b:
   
   # LLM settings (less frequent for speed)
   llm_model: "Qwen/Qwen2.5-1.5B-Instruct"  # Lightweight 1.5B model
-  llm_cadence: 100  # Reduced from 50 for speed
+  llm_cadence: 500  # Reduced from 50 for speed
   llm_cache_enabled: true
   cache_by: ["fire_id", "t_bucket", "wind_regime"]
   
@@ -136,7 +136,7 @@ phase_c:
   
   # LLM settings (less frequent for speed)
   llm_model: "Qwen/Qwen2.5-1.5B-Instruct"  # Lightweight 1.5B model
-  llm_cadence: 100  # Reduced from 50 for speed
+  llm_cadence: 500  # Reduced from 50 for speed
   llm_cache_enabled: true
   cache_target_hit_rate: 0.60
   
@@ -176,7 +176,7 @@ phase_d:
   
   # LLM settings (optional: reduce cadence on complex scenarios)
   llm_model: "Qwen/Qwen2.5-1.5B-Instruct"  # Lightweight 1.5B model
-  llm_cadence: 40  # More frequent guidance
+  llm_cadence: 500  # Reduced for consistency; adjust per-phase when needed
   llm_cache_enabled: true
   
   # Reward weights (emphasize strategy)
