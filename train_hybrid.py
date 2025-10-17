@@ -57,7 +57,7 @@ class HybridRealFireEnv(gym.Env):
                  num_drones: int = 3,
                  max_steps: int = 100,
                  integrator: Optional[RealDataIntegrator] = None,
-                 llm_model: str = "meta-llama/Llama-2-7b-chat-hf",
+                 llm_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
                  llm_guidance_freq: int = 10,
                  hf_token: Optional[str] = None,
                  llm_backend: str = 'transformers'):

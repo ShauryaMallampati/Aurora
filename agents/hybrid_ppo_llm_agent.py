@@ -43,7 +43,7 @@ class HybridPPOLLMAgent:
     """Hybrid agent combining PPO execution with LLM strategic guidance."""
     
     def __init__(self,
-                 llm_model: str = "meta-llama/Llama-3.2-1B-Instruct",
+                 llm_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
                  llm_guidance_frequency: int = 10,
                  temperature: float = 0.7,
                  hf_token: Optional[str] = None,
@@ -52,7 +52,7 @@ class HybridPPOLLMAgent:
         """Initialize hybrid agent.
         
         Args:
-            llm_model: HuggingFace model ID (meta-llama/Llama-2-7b-chat-hf, etc.)
+            llm_model: HuggingFace model ID (e.g. Qwen/Qwen2.5-1.5B-Instruct)
             llm_guidance_frequency: Steps between LLM consultations
             temperature: LLM sampling temperature
             hf_token: HuggingFace API token (or set HF_TOKEN env var)
@@ -92,12 +92,12 @@ class HybridPPOLLMAgent:
                     if device == "auto":
                         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-                    # Decide whether model is a meta-llama gated model
-                    is_meta_llama = llm_model.startswith("meta-llama") or llm_model.startswith("meta/llama")
+                    # Decide whether the model is a gated model that needs a token
+                    is_gated_model = llm_model.startswith("meta-llama") or llm_model.startswith("meta/llama")
 
                     # Load tokenizer: pass token only if model is gated and token is available
                     tokenizer_kwargs = {"trust_remote_code": True}
-                    if is_meta_llama and hf_token:
+                    if is_gated_model and hf_token:
                         tokenizer_kwargs["token"] = hf_token
 
                     self.tokenizer = AutoTokenizer.from_pretrained(
@@ -106,8 +106,8 @@ class HybridPPOLLMAgent:
                     )
 
                     # Choose dtype and device_map recommendations
-                    # For Llama 3.2 family, BF16 is recommended; fall back to float32 on CPU
-                    if is_meta_llama:
+                    # For some gated models BF16/auto device mapping is recommended; fall back otherwise
+                    if is_gated_model:
                         torch_dtype = torch.bfloat16 if device == "cuda" else torch.float32
                         device_map = "auto"
                     else:
@@ -119,7 +119,7 @@ class HybridPPOLLMAgent:
                         "device_map": device_map,
                         "trust_remote_code": True
                     }
-                    if is_meta_llama and hf_token:
+                    if is_gated_model and hf_token:
                         model_kwargs["token"] = hf_token
 
                     self.model = AutoModelForCausalLM.from_pretrained(

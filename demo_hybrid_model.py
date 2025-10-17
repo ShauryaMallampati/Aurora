@@ -33,7 +33,7 @@ from agents.hybrid_ppo_llm_agent import HybridPPOLLMAgent
 class HybridModelDemo:
     """Demo runner for trained hybrid PPO+LLM model."""
     
-    def __init__(self, model_path: str, llm_model: str = "meta-llama/Llama-3.2-1B-Instruct",
+    def __init__(self, model_path: str, llm_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
                  llm_backend: str = "transformers", hf_token: str = None):
         """Initialize demo with trained model.
         
