@@ -5,7 +5,7 @@
 # PPO Parameters (with n_steps=2048, num_envs=4 → 8192 steps/update)
 ppo_defaults:
   n_steps: 2048
-  num_envs: 4
+  num_envs: 2
   batch_size: 256
   gamma: 0.995
   gae_lambda: 0.95
@@ -13,7 +13,7 @@ ppo_defaults:
   vf_coef: 0.5
   max_grad_norm: 0.5
   learning_rate: 3e-4
-  steps_per_update: 8192  # n_steps × num_envs
+  steps_per_update: 4096  # n_steps × num_envs (2048 × 2)
 
 # Checkpointing & Evaluation
 checkpoint:
