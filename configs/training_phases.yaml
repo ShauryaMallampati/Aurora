@@ -201,7 +201,7 @@ phase_d:
 # ========== SUMMARY ==========
 total_env_steps: 401_408      # ~400K steps total (optimized for ISEF)
 total_updates: 49             # 7 + 18 + 24 = 49 updates
-total_wall_time_estimate: "8-12 hours (with n_envs=4 + Gemini backend)"
+total_wall_time_estimate: "8-12 hours (with n_envs=4)"
 recommended_phases_for_isef: ["phase_a", "phase_b", "phase_c"]
 optional_phase: "phase_d (deprecated - not needed for 400K training)"
 

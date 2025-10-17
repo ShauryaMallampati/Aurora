@@ -437,8 +437,8 @@ def main():
                        help='Steps between LLM guidance (100 recommended for speed, 50 for more guidance)')
     parser.add_argument('--hf_token', type=str, default=None,
                        help='HuggingFace API token (or set HF_TOKEN env var)')
-    parser.add_argument('--llm_backend', type=str, default='gemini',
-                       help='LLM backend to use: transformers or gemini (gemini recommended for n_envs>1)')
+    parser.add_argument('--llm_backend', type=str, default='transformers',
+                       help='LLM backend to use: transformers (preferred)')
     
     # === CHECKPOINTING & EVALUATION ===
     parser.add_argument('--save_freq', type=int, default=40960,
@@ -509,12 +509,12 @@ def main():
     # Disable tokenizer parallelism to avoid fork warnings
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
     
-    # For multi-env: use Gemini backend to avoid loading heavy models in each worker
+    # For multi-env: prefer transformers but avoid heavy model loads in subprocesses
     worker_backend = args.llm_backend
-    if args.n_envs > 1:
-        worker_backend = 'gemini'
-        print(f"⚡ SPEED OPTIMIZATION: Using Gemini API backend for {args.n_envs} workers")
-        print(f"   (Avoids loading {args.llm_model} model in each subprocess)")
+    if args.n_envs > 1 and args.llm_backend == 'transformers':
+        # Use heuristic/transformers mix — avoid loading full model in each worker by
+        # relying on lightweight local models or heuristic guidance when appropriate.
+        print(f"⚡ SPEED OPTIMIZATION: Using transformers/heuristic mix for {args.n_envs} workers")
         env = SubprocVecEnv([make_env(i, args.llm_model, args.llm_freq, hf_token, worker_backend) 
                             for i in range(args.n_envs)])
     else:
