@@ -108,8 +108,12 @@ EOF
         echo "============================================================"
         echo ""
         
-        # Set HuggingFace token
-        export HF_TOKEN="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"
+        # Ensure HuggingFace token is set in environment (do NOT hardcode API keys)
+        if [ -z "$HF_TOKEN" ]; then
+            echo "⚠️  HF_TOKEN environment variable not set. If you need to use gated models, export HF_TOKEN before running this script."
+        else
+            echo "Using HF_TOKEN from environment"
+        fi
         
         # Create logs directory if it doesn't exist
         mkdir -p logs
