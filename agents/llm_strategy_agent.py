@@ -52,7 +52,7 @@ class LLMStrategyAgent:
     """LLM-based strategic agent for wildfire containment coordination."""
     
     def __init__(self, 
-                 model: str = "meta-llama/Llama-2-7b-chat-hf",
+                 model: str = "Qwen/Qwen2.5-1.5B-Instruct",
                  api_key: Optional[str] = None,
                  use_mock: bool = False,
                  use_local_llm: bool = True,
@@ -61,11 +61,11 @@ class LLMStrategyAgent:
         Initialize the LLM strategy agent.
         
         Args:
-            model: Model to use (meta-llama/Llama-2-7b-chat-hf, gpt-4o-mini, etc.)
+            model: Model to use (e.g. Qwen/Qwen2.5-1.5B-Instruct, gpt-4o-mini, etc.)
             api_key: OpenAI API key (if None, tries environment variable)
             use_mock: Whether to use mock responses instead of real API calls
             use_local_llm: Whether to use local HuggingFace model (True) or OpenAI API (False)
-            hf_token: HuggingFace token for gated models like LLaMA-2
+            hf_token: HuggingFace token for gated models
         """
         self.model = model
         self.use_mock = use_mock
