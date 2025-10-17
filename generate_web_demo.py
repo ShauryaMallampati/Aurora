@@ -297,7 +297,7 @@ HTML_TEMPLATE = """
                 </div>
                 <div class="info-card">
                     <h3>Model Type</h3>
-                    <p>Hybrid PPO + Gemini</p>
+                    <p>Hybrid PPO + LLM</p>
                 </div>
             </div>
         </div>

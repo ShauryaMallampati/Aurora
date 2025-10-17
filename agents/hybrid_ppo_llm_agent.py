@@ -47,7 +47,7 @@ class HybridPPOLLMAgent:
                  llm_guidance_frequency: int = 10,
                  temperature: float = 0.7,
                  hf_token: Optional[str] = None,
-                 llm_backend: str = "gemini",
+                 llm_backend: str = "transformers",
                  device: str = "auto"):
         """Initialize hybrid agent.
         
@@ -69,13 +69,14 @@ class HybridPPOLLMAgent:
         self.pipe = None
         
         # If Gemini backend is selected, skip attempting to load heavy HF models to avoid
-        # long downloads or gated model failures. We'll use Gemini API for strategic guidance.
-        hf_token = hf_token or "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"
+        # long downloads or gated model failures. Gemini support has been removed
+        # from this codebase; prefer transformers or heuristic fallbacks.
+        hf_token = hf_token or os.getenv("HF_TOKEN")
+
         if self.llm_backend == 'gemini':
-            print("🔁 Gemini backend selected — skipping transformers model load.")
-            # Ensure gemini API key is set (hardcoded per user request)
-            self.gemini_api_key = getattr(self, 'gemini_api_key', None) or "AIzaSyA8tSkutNWpejpZODk3Egf-8BSCKYDIZUI"
-            self.gemini_model = getattr(self, 'gemini_model', None) or "text-bison-001"
+            # Gemini support removed; switch to transformers backend instead.
+            print("⚠️  Gemini backend requested but unsupported. Switching to 'transformers' backend.")
+            self.llm_backend = 'transformers'
         else:
             if TRANSFORMERS_AVAILABLE:
                 # Keep an HF token available (left in code per user request). WARNING: embedding
@@ -144,13 +145,8 @@ class HybridPPOLLMAgent:
                     print("    Using heuristic fallback for strategic guidance.")
             else:
                 print("⚠️  Transformers library not available. Using heuristic fallback.")
-        # If user selected Gemini backend, store API key (hardcoded per user request)
-        if self.llm_backend == 'gemini':
-            # WARNING: embedding API keys in source is insecure.
-            self.gemini_api_key = "AIzaSyA8tSkutNWpejpZODk3Egf-8BSCKYDIZUI"
-            self.gemini_model = "text-bison-001"  # change to preferred Gemini model if needed
-            print("🔁 Gemini backend selected for LLM calls.")
-        else:
+        # Ensure transformers availability note
+        if self.llm_backend == 'transformers' and not TRANSFORMERS_AVAILABLE:
             print("⚠️  Transformers library not available. Using heuristic fallback.")
         
         # Strategic guidance state
@@ -187,7 +183,7 @@ class HybridPPOLLMAgent:
         """
         
         if not self.pipe:
-            # Fallback: simple heuristic strategy
+            # No transformers pipeline available or running in heuristic mode
             return self._fallback_strategy(fire_state, drone_positions, drone_states)
         
         try:
@@ -239,11 +235,9 @@ Focus on:
             prompt = f"<s>[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{user_prompt} [/INST]"
             
             # Generate response via selected backend
-            if self.llm_backend == 'gemini':
-                response_text = self._call_gemini(prompt)
-            else:
-                outputs = self.pipe(prompt, max_new_tokens=400, temperature=self.temperature)
-                response_text = outputs[0].get('generated_text', '')
+            # Only transformers backend supported for direct model generation
+            outputs = self.pipe(prompt, max_new_tokens=400, temperature=self.temperature)
+            response_text = outputs[0].get('generated_text', '')
             
             # Extract JSON from response (after [/INST])
             if '[/INST]' in response_text:
@@ -303,40 +297,10 @@ Focus on:
             # Old fallback behavior (commented out for debugging):
             # return self._fallback_strategy(fire_state, drone_positions, drone_states)
 
-    def _call_gemini(self, prompt: str) -> str:
-        """Call Google Gemini / Generative Language API (text-bison endpoint).
-
-        This uses an API key (hardcoded above). Returns the text output or raises an exception.
-        """
-        try:
-            import requests
-
-            api_key = getattr(self, 'gemini_api_key', None)
-            if not api_key:
-                raise RuntimeError('Gemini API key not configured')
-
-            url = f'https://generativelanguage.googleapis.com/v1/models/{self.gemini_model}:generate?key={api_key}'
-            headers = {'Content-Type': 'application/json'}
-            body = {
-                'prompt': { 'text': prompt },
-                'temperature': float(self.temperature),
-                'maxOutputTokens': 512,
-            }
-
-            resp = requests.post(url, json=body, headers=headers, timeout=60)
-            resp.raise_for_status()
-            data = resp.json()
-
-            # text-bison returns candidates[0].output
-            if 'candidates' in data and len(data['candidates']) > 0 and 'output' in data['candidates'][0]:
-                return data['candidates'][0]['output']
-            # chat-like responses may be in 'output' or 'content'
-            if 'output' in data:
-                return data['output']
-            return json.dumps(data)
-
-        except Exception as e:
-            raise RuntimeError(f'Gemini API error: {e}')
+    # Gemini API support has been intentionally removed from the codebase.
+    # If external API-based backends are required in future, implement them
+    # as separate optional adapters outside the core repository and load
+    # them via plugin interfaces. This keeps API keys out of source.
     
     def _fallback_strategy(self, fire_state, drone_positions, drone_states) -> Dict:
         """Simple heuristic strategy when LLM unavailable."""

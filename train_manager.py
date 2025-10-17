@@ -82,7 +82,7 @@ def run_hybrid_training(phase_config, output_dir, resume_from=None):
         'train_hybrid.py',
         '--timesteps', str(phase_config.get('env_steps', 100000)),
         '--n_envs', str(phase_config.get('num_envs', 4)),
-        '--llm_backend', 'gemini',  # Use Gemini for speed
+        '--llm_backend', 'transformers',
         '--llm_freq', str(phase_config.get('llm', {}).get('guidance_cadence', 50)),
         '--save_freq', str(phase_config.get('checkpoint', {}).get('save_every_steps', 5000)),
         '--eval_freq', str(phase_config.get('checkpoint', {}).get('eval_every_updates', 10) * 8192),

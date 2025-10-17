@@ -34,13 +34,13 @@ class HybridModelDemo:
     """Demo runner for trained hybrid PPO+LLM model."""
     
     def __init__(self, model_path: str, llm_model: str = "meta-llama/Llama-3.2-1B-Instruct",
-                 llm_backend: str = "gemini", hf_token: str = None):
+                 llm_backend: str = "transformers", hf_token: str = None):
         """Initialize demo with trained model.
         
         Args:
             model_path: Path to trained PPO model directory
             llm_model: LLM model ID for strategic guidance
-            llm_backend: Backend to use (transformers or gemini)
+                    llm_backend: Backend to use (transformers)
             hf_token: HuggingFace token (if using transformers)
         """
         print(f"Loading trained model from {model_path}...")
@@ -284,8 +284,8 @@ def main():
     parser.add_argument('--model_path', type=str, 
                        default='results/aurora_hybrid_ppo_llm_model/policy.pth',
                        help='Path to trained model')
-    parser.add_argument('--llm_backend', type=str, default='gemini',
-                       help='LLM backend (transformers or gemini)')
+    parser.add_argument('--llm_backend', type=str, default='transformers',
+                       help='LLM backend (transformers)')
     parser.add_argument('--max_steps', type=int, default=200,
                        help='Maximum simulation steps')
     parser.add_argument('--output', type=str, default='results/demo_telemetry.json',
@@ -297,7 +297,7 @@ def main():
     demo = HybridModelDemo(
         model_path=args.model_path,
         llm_backend=args.llm_backend,
-        hf_token="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"
+        hf_token=os.getenv("HF_TOKEN")
     )
     
     # Run scenario
