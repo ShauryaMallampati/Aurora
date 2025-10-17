@@ -427,8 +427,8 @@ def main():
                        help='Total training timesteps (overrides phase setting)')
     
     # === ENVIRONMENT SETTINGS ===
-    parser.add_argument('--n_envs', type=int, default=4, 
-                       help='Number of parallel environments (4 recommended, 8192 steps/update)')
+    parser.add_argument('--n_envs', type=int, default=2, 
+                       help='Number of parallel environments (2 recommended, 4096 steps/update)')
     
     # === LLM SETTINGS ===
     parser.add_argument('--llm_model', type=str, default='Qwen/Qwen2.5-1.5B-Instruct',
