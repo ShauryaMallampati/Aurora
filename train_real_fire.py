@@ -11,6 +11,12 @@ Date: October 13, 2025
 ISEF 2025 Competition
 """
 
+# Usage notes:
+# - To resume from a checkpoint folder created by this script, pass --resume <path-to-checkpoint-folder>
+#   e.g. --resume results/aurora_ppo_checkpoint_100000steps
+# - The script will try to infer how many timesteps were already completed from the folder name
+#   (pattern like '100000steps' or '100,000steps') and continue for the remaining timesteps.
+
 import sys
 import os
 from pathlib import Path as _Path
@@ -28,6 +34,7 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 import shutil
+import zipfile
 
 # Stable-Baselines3
 from stable_baselines3 import PPO
@@ -238,48 +245,120 @@ class RealFireEnv(gym.Env):
 
 
 class TrainingCallback(BaseCallback):
-    """Custom callback to log training progress with clear step tracking."""
+    """Custom callback to log training progress with clear step tracking and checkpointing."""
     
-    def __init__(self, check_freq: int = 1000, total_timesteps: int = 50000, verbose: int = 1):
+    def __init__(self, check_freq: int = 1000, total_timesteps: int = 2000000, save_freq: int = 100000, verbose: int = 1):
         super().__init__(verbose)
         self.check_freq = check_freq
         self.total_timesteps = total_timesteps
+        self.save_freq = save_freq
         self.episode_rewards = []
         self.episode_lengths = []
         self.start_time = None
+        self.last_save_step = 0
         
     def _on_training_start(self) -> None:
         """Called at the beginning of training."""
         self.start_time = datetime.now()
-        print(f"\n🚀 Training started at {self.start_time.strftime('%H:%M:%S')}")
+        print(f"\n🚀 Training started at {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"📈 Total steps: {self.total_timesteps:,} | Checkpoint every: {self.save_freq:,} steps")
         print("="*80)
         
     def _on_step(self) -> bool:
+        """Called after every step."""
         
-        if self.n_calls % self.check_freq == 0:
-            # Calculate progress
+        # Progress reporting
+        if self.n_calls % self.check_freq == 0 or self.n_calls == 1:
             progress = (self.n_calls / self.total_timesteps) * 100
             elapsed = datetime.now() - self.start_time
             steps_per_sec = self.n_calls / elapsed.total_seconds() if elapsed.total_seconds() > 0 else 0
             remaining_steps = self.total_timesteps - self.n_calls
             eta_seconds = remaining_steps / steps_per_sec if steps_per_sec > 0 else 0
             eta = str(timedelta(seconds=int(eta_seconds)))
+            elapsed_str = str(timedelta(seconds=int(elapsed.total_seconds())))
             
             # Log progress
-            print(f"\n📊 STEP {self.n_calls:,} / {self.total_timesteps:,} ({progress:.1f}%)")
-            print(f"   ⏱️  Speed: {steps_per_sec:.1f} steps/sec | ETA: {eta}")
+            print(f"\n✨ STEP {self.n_calls:,} / {self.total_timesteps:,} ({progress:.1f}%) ✨")
+            print(f"   ⏱️  Elapsed: {elapsed_str} | Speed: {steps_per_sec:.1f} steps/sec | ETA: {eta}")
             
             if len(self.episode_rewards) > 0:
-                mean_reward = np.mean(self.episode_rewards[-10:])
-                mean_length = np.mean(self.episode_lengths[-10:])
+                mean_reward = np.mean(self.episode_rewards[-10:]) if len(self.episode_rewards) >= 10 else np.mean(self.episode_rewards)
+                mean_length = np.mean(self.episode_lengths[-10:]) if len(self.episode_lengths) >= 10 else np.mean(self.episode_lengths)
                 print(f"   🎯 Mean reward (last 10 ep): {mean_reward:.2f}")
                 print(f"   📏 Mean episode length: {mean_length:.1f}")
             print("-"*80)
         
+        # Checkpoint saving
+        if self.n_calls % self.save_freq == 0 and self.n_calls > self.last_save_step:
+            self._save_checkpoint()
+            self.last_save_step = self.n_calls
+        
         return True
     
+    def _save_checkpoint(self) -> None:
+        """Save model checkpoint with step information."""
+        results_dir = _Path(__file__).parent.resolve() / 'results'
+        try:
+            results_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            print(f"   ❌ Could not create results directory '{results_dir}': {e}")
+            return
+
+        checkpoint_name = f"aurora_ppo_checkpoint_{self.n_calls}steps"
+        checkpoint_path = results_dir / 'checkpoints' / checkpoint_name
+        checkpoint_zip_tmp = checkpoint_path.with_suffix('.zip.tmp')
+        checkpoint_zip = checkpoint_path.with_suffix('.zip')
+
+        # Ensure checkpoints dir exists
+        checkpoints_dir = results_dir / 'checkpoints'
+        try:
+            checkpoints_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            print(f"   ❌ Could not create checkpoints directory '{checkpoints_dir}': {e}")
+            return
+
+        tmp_extract_dir = checkpoint_path.with_suffix('.tmp')
+        try:
+            # Save model to a temporary zip file first
+            self.model.save(str(checkpoint_zip_tmp))
+
+            # Atomically move tmp zip to final zip
+            try:
+                os.replace(str(checkpoint_zip_tmp), str(checkpoint_zip))
+            except Exception:
+                # If os.replace fails (permissions etc), fallback to rename
+                os.rename(str(checkpoint_zip_tmp), str(checkpoint_zip))
+
+            # Remove any previous partial extract
+            if tmp_extract_dir.exists():
+                shutil.rmtree(str(tmp_extract_dir))
+
+            # Extract zip into a temp dir then move into place
+            with zipfile.ZipFile(str(checkpoint_zip), 'r') as zf:
+                zf.extractall(str(tmp_extract_dir))
+
+            if checkpoint_path.exists():
+                shutil.rmtree(str(checkpoint_path))
+            os.replace(str(tmp_extract_dir), str(checkpoint_path))
+
+            print(f"   💾 Checkpoint saved: {checkpoint_name} ({self.n_calls:,} steps)")
+
+        except Exception as e:
+            # Cleanup any partial artifacts
+            try:
+                if checkpoint_zip_tmp.exists():
+                    checkpoint_zip_tmp.unlink()
+            except Exception:
+                pass
+            try:
+                if tmp_extract_dir.exists():
+                    shutil.rmtree(str(tmp_extract_dir))
+            except Exception:
+                pass
+            print(f"   ⚠️  Error saving checkpoint: {e}")
+    
     def _on_rollout_end(self) -> None:
-        # Store episode stats
+        """Store episode statistics."""
         if len(self.model.ep_info_buffer) > 0:
             for ep_info in self.model.ep_info_buffer:
                 if isinstance(ep_info, dict):
@@ -310,16 +389,25 @@ def make_env(rank: int):
 
 def main():
     parser = argparse.ArgumentParser(description='Train AURORA with real fire data')
-    parser.add_argument('--timesteps', type=int, default=500000, 
-                       help='Total training timesteps')
-    parser.add_argument('--n_envs', type=int, default=8, 
+    parser.add_argument('--timesteps', type=int, default=2000000, 
+                       help='Total training timesteps (default: 2M for 2 million)')
+    parser.add_argument('--n_envs', type=int, default=4, 
                        help='Number of parallel environments')
     parser.add_argument('--save_freq', type=int, default=50000,
-                       help='Save model every N steps')
+                       help='Save model every N steps (checkpoints)')
+    parser.add_argument('--resume', type=str, default=None,
+                       help='Path to checkpoint folder to resume from (optional)')
+    parser.add_argument('--seed', type=int, default=42,
+                       help='Random seed for reproducibility (default: 42)')
     parser.add_argument('--verbose', type=int, default=1,
                        help='Verbosity level')
     
     args = parser.parse_args()
+    
+    # Set seeds for reproducibility
+    np.random.seed(args.seed)
+    import random
+    random.seed(args.seed)
     
     print("\n" + "="*80)
     print("AURORA TRAINING WITH REAL FIRE PERIMETER DATA")
@@ -327,6 +415,7 @@ def main():
     print(f"Total timesteps: {args.timesteps:,}")
     print(f"Parallel environments: {args.n_envs}")
     print(f"Save frequency: {args.save_freq:,}")
+    print(f"Random seed: {args.seed}")
     print("="*80 + "\n")
     
     # Create vectorized environments
@@ -340,27 +429,92 @@ def main():
         env = DummyVecEnv([make_env(0)])
     
     print("✅ Environments created\n")
+
+    # Helper: normalize checkpoint folder names under results/checkpoints
+    def _normalize_checkpoints(results_dir: _Path):
+        ckpt_dir = results_dir / 'checkpoints'
+        if not ckpt_dir.exists():
+            return
+        for child in ckpt_dir.iterdir():
+            # look for patterns like 'checkpoint_step_500' or 'checkpoint_step_1000'
+            name = child.name
+            m = None
+            import re
+            m = re.search(r"_step_(\d+)$", name)
+            if m:
+                steps = int(m.group(1))
+                new_name = f"aurora_ppo_checkpoint_{steps}steps"
+                new_path = ckpt_dir / new_name
+                if not new_path.exists():
+                    try:
+                        child.rename(new_path)
+                        print(f"🔁 Renamed checkpoint '{name}' -> '{new_name}'")
+                    except Exception as e:
+                        print(f"⚠️  Failed to rename {child}: {e}")
+
+    # Normalize existing checkpoint names so resume detection works
+    results_root = _Path(__file__).parent.resolve() / 'results'
+    _normalize_checkpoints(results_root)
+
+    # If resuming, we will load the model from the provided folder after env is created
+    model = None
+    resumed_steps = 0
+    if args.resume:
+        # Try to infer completed steps from folder name, e.g. '..._100000steps' or '..._100,000steps'
+        import re
+        # First try the new '..._12345steps' pattern
+        m = re.search(r"(\d{1,3}(?:,\d{3})*)steps", args.resume)
+        if not m:
+            # fallback: detect '_step_123' or 'checkpoint_step_123' patterns
+            m = re.search(r"_step_(\d+)", args.resume)
+        if m:
+            # remove commas
+            resumed_steps = int(m.group(1).replace(',', ''))
+            print(f"🔁 Resuming from checkpoint folder '{args.resume}' (detected {resumed_steps:,} completed steps)")
+        else:
+            print(f"🔁 Resuming from checkpoint folder '{args.resume}' (completed steps unknown)")
     
-    # Create PPO model
-    print("Initializing PPO model...")
-    model = PPO(
-        "MlpPolicy",
-        env,
-        learning_rate=3e-4,
-        n_steps=2048,
-        batch_size=64,
-        n_epochs=10,
-        gamma=0.99,
-        gae_lambda=0.95,
-        clip_range=0.2,
-        verbose=args.verbose,
-        tensorboard_log=None  # Disable tensorboard logging
-    )
-    
-    print("✅ Model initialized\n")
-    
+    # Create or load PPO model
+    if args.resume:
+        try:
+            print("Loading model from resume path...")
+            model = PPO.load(args.resume, env=env)
+            print("✅ Model loaded from resume folder\n")
+        except Exception as e:
+            print(f"⚠️  Failed to load model from {args.resume}: {e}")
+            print("   Falling back to initializing a fresh PPO model")
+
+    if model is None:
+        print("Initializing new PPO model...")
+        model = PPO(
+            "MlpPolicy",
+            env,
+            learning_rate=3e-4,
+            n_steps=2048,
+            batch_size=64,
+            n_epochs=10,
+            gamma=0.99,
+            gae_lambda=0.95,
+            clip_range=0.2,
+            seed=args.seed,
+            verbose=args.verbose,
+            tensorboard_log=None  # Disable tensorboard logging
+        )
+        print("✅ Model initialized\n")
+
+    # Compute remaining timesteps when resuming (if we could detect previous steps)
+    if args.resume and resumed_steps > 0:
+        remaining_timesteps = max(0, args.timesteps - resumed_steps)
+        print(f"Target total timesteps: {args.timesteps:,}, already completed: {resumed_steps:,}, remaining: {remaining_timesteps:,}")
+    elif args.resume and resumed_steps == 0:
+        # unknown previous progress: assume args.timesteps is the additional timesteps to run
+        remaining_timesteps = args.timesteps
+        print(f"Previous completed steps unknown; training will run for {remaining_timesteps:,} additional steps")
+    else:
+        remaining_timesteps = args.timesteps
+
     # Create callback with total timesteps for progress tracking
-    callback = TrainingCallback(check_freq=2000, total_timesteps=args.timesteps, verbose=1)
+    callback = TrainingCallback(check_freq=5000, total_timesteps=remaining_timesteps, save_freq=args.save_freq, verbose=1)
     
     # Train
     print("="*80)
