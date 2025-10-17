@@ -433,8 +433,8 @@ def main():
     # === LLM SETTINGS ===
     parser.add_argument('--llm_model', type=str, default='Qwen/Qwen2.5-1.5B-Instruct',
                        help='HuggingFace LLM model ID (Qwen recommended for ISEF)')
-    parser.add_argument('--llm_freq', type=int, default=100,
-                       help='Steps between LLM guidance (100 recommended for speed, 50 for more guidance)')
+    parser.add_argument('--llm_freq', type=int, default=500,
+                       help='Steps between LLM guidance (500 recommended for speed, lower for more guidance)')
     parser.add_argument('--hf_token', type=str, default=None,
                        help='HuggingFace API token (or set HF_TOKEN env var)')
     parser.add_argument('--llm_backend', type=str, default='transformers',

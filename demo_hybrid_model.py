@@ -50,7 +50,7 @@ class HybridModelDemo:
         # Initialize hybrid agent for strategic guidance
         self.hybrid_agent = HybridPPOLLMAgent(
             llm_model=llm_model,
-            llm_guidance_frequency=50,  # Request guidance every 50 steps
+            llm_guidance_frequency=500,  # Request guidance every 500 steps
             hf_token=hf_token,
             llm_backend=llm_backend
         )
