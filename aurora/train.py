@@ -1,6 +1,0 @@
-# ...existing code...
-
-# Always use Qwen model regardless of n_envs
-worker_backend = "qwen"
-
-# ...existing code...
