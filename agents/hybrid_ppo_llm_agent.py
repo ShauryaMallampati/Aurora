@@ -236,8 +236,16 @@ Focus on:
             
             # Generate response via selected backend
             # Only transformers backend supported for direct model generation
-            outputs = self.pipe(prompt, max_new_tokens=400, temperature=self.temperature)
+            # ALWAYS WAIT for response to complete (blocking call)
+            print(f"⏳ Waiting for Qwen guidance at step {step}...")
+            outputs = self.pipe(
+                prompt, 
+                max_new_tokens=4000,
+                temperature=self.temperature,
+                num_return_sequences=1
+            )
             response_text = outputs[0].get('generated_text', '')
+            print(f"✅ Qwen responded")
             
             # Extract JSON from response (after [/INST])
             if '[/INST]' in response_text:
@@ -286,7 +294,9 @@ Focus on:
             guidance['step'] = step
             self.guidance_history.append(guidance)
             
-            print(f"🧠 Qwen Strategy: {guidance.get('resource_strategy', 'N/A')} - {guidance.get('reasoning', 'N/A')[:80]}...")
+            strategy = guidance.get('resource_strategy', 'balanced')
+            reasoning = guidance.get('reasoning', 'Strategic guidance provided')[:80]
+            print(f"🧠 Qwen Strategy: {strategy} - {reasoning}...")
             
             return guidance
             
