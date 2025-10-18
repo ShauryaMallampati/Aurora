@@ -447,6 +447,8 @@ def main():
                        help='Eval every N steps (default: every 10 updates = 81920 steps)')
     parser.add_argument('--progress_freq', type=int, default=100,
                        help='How often (in steps) to print progress updates to console (default 100 for reduced IO)')
+    parser.add_argument('--resume', action='store_true', default=False,
+                       help='Auto-resume from latest checkpoint without prompting (y)')
     
     # === OTHER ===
     parser.add_argument('--verbose', type=int, default=1,
@@ -527,18 +529,36 @@ def main():
     checkpoint_dir = _Path("./results/checkpoints/")
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     
-    # Find latest checkpoint
-    checkpoints = sorted(checkpoint_dir.glob("checkpoint_step_*"))
+    # Find latest checkpoint (look for .zip files, sort numerically)
+    checkpoints = list(checkpoint_dir.glob("checkpoint_step_*.zip"))
+    
+    # Sort by step number (extract number from filename and sort numerically)
+    def get_step_num(cp):
+        try:
+            return int(cp.stem.split("_")[-1])
+        except:
+            return 0
+    
+    checkpoints = sorted(checkpoints, key=get_step_num)
     latest_checkpoint = None
     resume_step = 0
     
     if checkpoints:
         latest_checkpoint = checkpoints[-1]
-        # Extract step number from checkpoint name
+        # Extract step number from checkpoint name (remove .zip extension)
         try:
-            resume_step = int(latest_checkpoint.name.split("_")[-1])
+            # checkpoint_step_204800.zip -> 204800
+            step_str = latest_checkpoint.stem.split("_")[-1]
+            resume_step = int(step_str)
             print(f"🔄 Found checkpoint at step {resume_step:,}: {latest_checkpoint}")
-            user_input = input(f"   Resume from step {resume_step:,}? (y/n): ").strip().lower()
+            
+            # Auto-resume if --resume flag is set, otherwise ask user
+            if args.resume:
+                user_input = 'y'
+                print(f"   Auto-resuming (--resume flag set)")
+            else:
+                user_input = input(f"   Resume from step {resume_step:,}? (y/n): ").strip().lower()
+            
             if user_input != 'y':
                 latest_checkpoint = None
                 resume_step = 0
