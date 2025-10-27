@@ -50,7 +50,18 @@ from agents.hybrid_ppo_llm_agent import HybridPPOLLMAgent
 
 
 class HybridRealFireEnv(gym.Env):
-    """AURORA Environment using REAL fire perimeter data + LLM strategic guidance."""
+    """AURORA Environment using REAL fire perimeter data + LLM strategic guidance
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    ."""
     
     def __init__(self, 
                  grid_size: int = 50,
