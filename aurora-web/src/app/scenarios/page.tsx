@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MapPin, Calendar, Flame, Database, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Navigation } from "@/shared/Navigation";
+import { CustomFireCreator } from "@/components/custom-fire-creator";
 
 // Famous historical wildfires with real data
 const SCENARIOS = [
@@ -248,12 +249,24 @@ export default function ScenariosPage() {
       {/* Header */}
       <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-4xl font-bold">Famous Fire Scenarios</h1>
+          <h1 className="text-4xl font-bold">Fire Scenarios</h1>
           <p className="text-gray-400 mt-2">
-            12 major historical wildfires with verified data provenance from 116,337 fire dataset
+            Create custom scenarios or use verified data from 116,337 historical wildfires
           </p>
         </div>
       </header>
+
+      {/* Custom Fire Creator */}
+      <section className="bg-gradient-to-b from-slate-900 to-slate-950 border-b border-gray-800">
+        <div className="max-w-3xl mx-auto px-4 py-12">
+          <CustomFireCreator />
+        </div>
+      </section>
+
+      {/* Divider */}
+      <div className="bg-gray-900/50 py-8 text-center">
+        <p className="text-gray-400 text-sm font-medium">— OR SELECT A HISTORICAL FIRE BELOW —</p>
+      </div>
 
       {/* Gallery Grid */}
       <main className="max-w-7xl mx-auto px-4 py-8">

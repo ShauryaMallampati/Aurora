@@ -20,14 +20,14 @@ export function RightPanel() {
   const setSelectedTab = useSimulationStore((state) => state.setSelectedTab);
 
   return (
-    <div className="w-96 bg-gray-900 border-l border-gray-800 flex flex-col">
-      {/* Tab Headers */}
-      <div className="flex border-b border-gray-800">
+    <div className="w-80 bg-gray-900 border-l border-gray-800 flex flex-col">
+      {/* Tab Headers - Scrollable */}
+      <div className="flex border-b border-gray-800 overflow-x-auto">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setSelectedTab(tab.id)}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition ${
+            className={`flex-shrink-0 px-3 py-3 text-xs font-medium transition whitespace-nowrap ${
               selectedTab === tab.id
                 ? "bg-gray-800 text-white border-b-2 border-orange-500"
                 : "text-gray-400 hover:text-white hover:bg-gray-800/50"

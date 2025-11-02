@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSimulationStore } from "@/shared/store";
 import { startSimulation, controlSimulation, SimulationStream } from "@/shared/api";
 import type { SimulationConfig } from "@/shared/types";
+import { SettingsModal } from "@/components/settings-modal";
 import {
   Play,
   Pause,
@@ -13,6 +15,7 @@ import {
   Activity,
   Split,
   Flame,
+  Home,
 } from "lucide-react";
 
 interface ControlBarProps {
@@ -324,12 +327,21 @@ export function ControlBar({ onToggleSplitView, onOpenFireCreator }: ControlBarP
             </button>
           )}
           <button
-            onClick={() => setShowSettings(!showSettings)}
+            onClick={() => setShowSettings(true)}
             className="px-4 py-2.5 bg-gray-800 text-white rounded-lg font-semibold flex items-center gap-2 hover:bg-gray-700 transition"
           >
             <Settings className="w-5 h-5" />
-            Config
+            Settings
           </button>
+          {status === 'completed' && (
+            <Link
+              href="/"
+              className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-semibold flex items-center gap-2 hover:bg-emerald-700 transition"
+            >
+              <Home className="w-5 h-5" />
+              Home
+            </Link>
+          )}
         </div>
       </div>
 
@@ -489,6 +501,9 @@ export function ControlBar({ onToggleSplitView, onOpenFireCreator }: ControlBarP
           </div>
         </div>
       )}
+
+      {/* Settings Modal */}
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Beaker, Play, Download, RotateCcw, TrendingUp, Clock, Activity, Zap } from "lucide-react";
 import { Navigation } from "@/shared/Navigation";
+import { ExperimentLabDashboard } from "@/components/experiment-lab-dashboard";
 
 /**
  * Experiment Lab - Reproducibility & Ablation Studies
@@ -119,6 +120,11 @@ export default function ExperimentLabPage() {
           <p className="text-gray-400">
             Reproducible experiments with configurable seeds, ablations, and batch runs
           </p>
+        </div>
+
+        {/* Live Training Dashboard */}
+        <div className="max-w-7xl mx-auto mb-12">
+          <ExperimentLabDashboard />
         </div>
 
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">

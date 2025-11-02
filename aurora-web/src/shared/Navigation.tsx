@@ -7,9 +7,11 @@ import { Activity, Home } from "lucide-react";
 const NAV_LINKS = [
   { href: "/", label: "Home", icon: Home },
   { href: "/sim", label: "Mission Control", icon: Activity },
+  { href: "/dashboard", label: "Dashboard", icon: null },
   { href: "/scenarios", label: "Scenarios", icon: null },
   { href: "/lab", label: "Lab", icon: null },
   { href: "/runs", label: "Run History", icon: null },
+  { href: "/export", label: "Export", icon: null },
   { href: "/sources", label: "Data Sources", icon: null },
 ];
 

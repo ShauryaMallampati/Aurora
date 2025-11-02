@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { History, Play, Pin, Search, Filter, Download } from "lucide-react";
+import { History, Play, Pin, PinOff, Search, Filter, Download, Copy, Trash2, Clock, ArrowUpDown } from "lucide-react";
 
 /**
  * Run History & Reproduction Page
@@ -93,6 +93,32 @@ export default function RunHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterModel, setFilterModel] = useState<"all" | "ppo" | "hybrid">("all");
   const [sortBy, setSortBy] = useState<"timestamp" | "return" | "completion">("timestamp");
+  const [showComparison, setShowComparison] = useState(false);
+  const [selectedComparison, setSelectedComparison] = useState<[string, string] | null>(null);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("aurora_run_history");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setRuns(parsed);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load run history from localStorage:", error);
+    }
+  }, []);
+
+  // Save to localStorage whenever runs change
+  useEffect(() => {
+    try {
+      localStorage.setItem("aurora_run_history", JSON.stringify(runs));
+    } catch (error) {
+      console.error("Failed to save run history to localStorage:", error);
+    }
+  }, [runs]);
 
   const filteredRuns = runs
     .filter((run) => {
@@ -127,6 +153,22 @@ export default function RunHistoryPage() {
     link.href = url;
     link.download = `${run.id}_config.json`;
     link.click();
+  };
+
+  const handleDeleteRun = (runId: string) => {
+    setRuns(runs.filter((run) => run.id !== runId));
+  };
+
+  const handleCompareRuns = (runId1: string, runId2: string) => {
+    setSelectedComparison([runId1, runId2]);
+    setShowComparison(true);
+    // Store in session for SplitView
+    const run1 = runs.find((r) => r.id === runId1);
+    const run2 = runs.find((r) => r.id === runId2);
+    if (run1 && run2) {
+      sessionStorage.setItem("comparisonRuns", JSON.stringify({ ppo: run1, hybrid: run2 }));
+      router.push("/sim?view=comparison");
+    }
   };
 
   return (
@@ -194,6 +236,41 @@ export default function RunHistoryPage() {
           </span>
         )}
       </div>
+
+      {/* Pinned Runs Quick View */}
+      {filteredRuns.filter((r) => r.pinned).length > 0 && (
+        <div className="max-w-7xl mx-auto mb-6 bg-gradient-to-r from-yellow-900/20 to-amber-900/20 border border-yellow-800 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Pin className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+            <h3 className="font-semibold text-yellow-300">Pinned Runs</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {filteredRuns
+              .filter((r) => r.pinned)
+              .map((run) => (
+                <div key={run.id} className="bg-gray-900 border border-yellow-700 rounded p-3 flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-white truncate">{run.scenario}</p>
+                    <p className="text-xs text-gray-400">
+                      {run.model.toUpperCase()} • Return: {run.metrics.return.toFixed(1)} • Completion: {(run.metrics.completionRate * 100).toFixed(0)}%
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const otherPinned = filteredRuns.filter((r) => r.pinned && r.id !== run.id);
+                      if (otherPinned.length > 0) {
+                        handleCompareRuns(run.id, otherPinned[0].id);
+                      }
+                    }}
+                    className="ml-2 px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs font-semibold transition whitespace-nowrap"
+                  >
+                    Compare
+                  </button>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       {/* Run Table */}
       <div className="max-w-7xl mx-auto bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
@@ -274,7 +351,7 @@ export default function RunHistoryPage() {
                         }`}
                         title={run.pinned ? "Unpin" : "Pin to Results"}
                       >
-                        <Pin className="w-4 h-4" />
+                        {run.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
                       </button>
                       <button
                         onClick={() => handleExportRun(run)}
@@ -282,6 +359,13 @@ export default function RunHistoryPage() {
                         title="Export config"
                       >
                         <Download className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRun(run.id)}
+                        className="p-1.5 bg-red-700 hover:bg-red-600 rounded transition"
+                        title="Delete run"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

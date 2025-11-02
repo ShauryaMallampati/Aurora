@@ -4,6 +4,7 @@ import { Marker, InfoWindow } from "@react-google-maps/api";
 import { useState } from "react";
 import type { TelemetryTick, Drone } from "@/shared/types";
 import { Wind, Mountain, Droplets, Flame, TrendingUp, Brain } from "lucide-react";
+import { DroneActionPopover, generateMockDroneActions } from "@/components/ui/drone-action-popover";
 
 interface DroneLayerProps {
   tick: TelemetryTick;
@@ -11,6 +12,7 @@ interface DroneLayerProps {
 
 export function DroneLayer({ tick }: DroneLayerProps) {
   const [selectedDrone, setSelectedDrone] = useState<number | null>(null);
+  const [hoveredDrone, setHoveredDrone] = useState<number | null>(null);
 
   // Group drones by proximity for large swarms (to prevent marker overlap)
   const droneGroups = tick.drones.length > 20 ? groupDronesByProximity(tick.drones) : null;
@@ -65,26 +67,40 @@ export function DroneLayer({ tick }: DroneLayerProps) {
         const count = nearbyDrones?.length || 1;
 
         return (
-          <Marker
-            key={drone.id}
-            position={{ lat: drone.lat, lng: drone.lng }}
-            icon={{
-              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-              fillColor: getDroneColor(drone.action),
-              fillOpacity: 0.9,
-              strokeColor: "#ffffff",
-              strokeWeight: count > 1 ? 3 : 2,
-              scale: count > 1 ? 8 : 6,
-              rotation: drone.heading,
-            }}
-            label={count > 1 ? {
-              text: `${count}`,
-              color: '#fff',
-              fontSize: '12px',
-              fontWeight: 'bold'
-            } : undefined}
-            onClick={() => setSelectedDrone(drone.id)}
-          >
+          <div key={drone.id}>
+            {/* Popover Container - Outside Marker */}
+            <DroneActionPopover
+              droneId={String(drone.id)}
+              lat={drone.lat}
+              lng={drone.lng}
+              actions={generateMockDroneActions(String(drone.id))}
+              isOpen={hoveredDrone === drone.id}
+              onHover={(isOpen) => setHoveredDrone(isOpen ? drone.id : null)}
+            />
+            
+            {/* Marker */}
+            <Marker
+              key={`marker_${drone.id}`}
+              position={{ lat: drone.lat, lng: drone.lng }}
+              icon={{
+                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                fillColor: getDroneColor(drone.action),
+                fillOpacity: 0.9,
+                strokeColor: hoveredDrone === drone.id ? "#ffeb3b" : "#ffffff",
+                strokeWeight: count > 1 ? 3 : 2,
+                scale: count > 1 ? 8 : 6,
+                rotation: drone.heading,
+              }}
+              label={count > 1 ? {
+                text: `${count}`,
+                color: '#fff',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              } : undefined}
+              onMouseOver={() => setHoveredDrone(drone.id)}
+              onMouseOut={() => setHoveredDrone(null)}
+              onClick={() => setSelectedDrone(drone.id)}
+            >
             {selectedDrone === drone.id && (
               <InfoWindow onCloseClick={() => setSelectedDrone(null)}>
                 <div className="text-gray-900 p-3 min-w-[280px]">
@@ -198,7 +214,8 @@ export function DroneLayer({ tick }: DroneLayerProps) {
                 </div>
               </InfoWindow>
             )}
-          </Marker>
+            </Marker>
+          </div>
         );
       })}
     </>
