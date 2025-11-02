@@ -15,6 +15,7 @@ const DEFAULT_ZOOM = 12;
 
 interface MapStageProps {
   modelType?: "ppo" | "hybrid";
+  currentStep?: number;
 }
 
 const MAP_STYLES = [
@@ -35,21 +36,36 @@ const MAP_STYLES = [
   },
 ];
 
-export function MapStage({ modelType = "hybrid" }: MapStageProps) {
+export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
   const ticks = useSimulationStore((state) => state.ticks);
+  const ppoRun = useSimulationStore((state) => state.ppoRun);
+  const hybridRun = useSimulationStore((state) => state.hybridRun);
+  
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [currentTick, setCurrentTick] = useState(0);
   const [inspectorPos, setInspectorPos] = useState<{x: number, y: number, lat: number, lng: number} | null>(null);
   const [pinnedInspector, setPinnedInspector] = useState(false);
 
-  // Get latest tick
-  useEffect(() => {
-    if (ticks.length > 0) {
-      setCurrentTick(ticks.length - 1);
+  // Use comparison runs if in comparison mode, else use regular ticks
+  let displayTicks = ticks;
+  if (currentStep !== undefined) {
+    if (modelType === 'ppo' && ppoRun) {
+      displayTicks = ppoRun.ticks;
+    } else if (modelType === 'hybrid' && hybridRun) {
+      displayTicks = hybridRun.ticks;
     }
-  }, [ticks]);
+  }
 
-  const tick = ticks[currentTick];
+  // Get latest tick or use specified step
+  useEffect(() => {
+    if (currentStep !== undefined) {
+      setCurrentTick(currentStep);
+    } else if (displayTicks.length > 0) {
+      setCurrentTick(displayTicks.length - 1);
+    }
+  }, [currentStep, displayTicks]);
+
+  const tick = displayTicks[currentTick];
 
   // Handle map click for data inspector
   const handleMapClick = (e: google.maps.MapMouseEvent) => {

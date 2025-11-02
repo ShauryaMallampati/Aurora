@@ -7,6 +7,7 @@ import type {
   SimulationConfig,
   RunSummary,
 } from './types';
+import type { SimulationRun, ComparisonMetrics } from './runsDataLoader';
 
 interface SimulationState {
   // Current run
@@ -23,6 +24,13 @@ interface SimulationState {
   config: SimulationConfig | null;
   playbackSpeed: number; // 0.25x to 8x
   
+  // Comparison view state
+  comparisonMode: boolean;
+  ppoRun: SimulationRun | null;
+  hybridRun: SimulationRun | null;
+  comparisonMetrics: ComparisonMetrics | null;
+  currentComparisonStep: number;
+  
   // UI state
   selectedTab: 'metrics' | 'telemetry' | 'guidance' | 'charts' | 'logs';
   logs: string[];
@@ -37,9 +45,14 @@ interface SimulationState {
   setSelectedTab: (tab: SimulationState['selectedTab']) => void;
   addLog: (message: string) => void;
   reset: () => void;
+  
+  // Comparison actions
+  setComparisonMode: (enabled: boolean) => void;
+  setComparisonRuns: (ppo: SimulationRun, hybrid: SimulationRun, metrics: ComparisonMetrics) => void;
+  setCurrentComparisonStep: (step: number) => void;
 }
 
-export const useSimulationStore = create<SimulationState>((set) => ({
+export const useSimulationStore = create<SimulationState>((set: any) => ({
   runId: null,
   status: 'idle',
   currentTick: null,
@@ -48,32 +61,44 @@ export const useSimulationStore = create<SimulationState>((set) => ({
   guidanceHistory: [],
   config: null,
   playbackSpeed: 1,
+  comparisonMode: false,
+  ppoRun: null,
+  hybridRun: null,
+  comparisonMetrics: null,
+  currentComparisonStep: 0,
   selectedTab: 'metrics',
   logs: [],
 
-  setRunId: (runId) => set({ runId }),
+  setRunId: (runId: string) => set({ runId }),
   
-  setStatus: (status) => set({ status }),
+  setStatus: (status: SimulationState['status']) => set({ status }),
   
-  updateTick: (tick) => set((state) => ({
+  updateTick: (tick: TelemetryTick) => set((state: SimulationState) => ({
     currentTick: tick,
     ticks: [...state.ticks.slice(-500), tick], // Keep last 500 ticks
   })),
   
-  updateGuidance: (guidance) => set((state) => ({
+  updateGuidance: (guidance: LLMGuidance) => set((state: SimulationState) => ({
     latestGuidance: guidance,
     guidanceHistory: [...state.guidanceHistory, guidance],
   })),
   
-  setConfig: (config) => set({ config }),
+  setConfig: (config: SimulationConfig) => set({ config }),
   
-  setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
+  setPlaybackSpeed: (playbackSpeed: number) => set({ playbackSpeed }),
   
-  setSelectedTab: (selectedTab) => set({ selectedTab }),
+  setSelectedTab: (selectedTab: SimulationState['selectedTab']) => set({ selectedTab }),
   
-  addLog: (message) => set((state) => ({
+  addLog: (message: string) => set((state: SimulationState) => ({
     logs: [...state.logs.slice(-100), `[${new Date().toISOString()}] ${message}`],
   })),
+  
+  setComparisonMode: (comparisonMode: boolean) => set({ comparisonMode }),
+  
+  setComparisonRuns: (ppo: SimulationRun, hybrid: SimulationRun, metrics: ComparisonMetrics) => 
+    set({ ppoRun: ppo, hybridRun: hybrid, comparisonMetrics: metrics }),
+  
+  setCurrentComparisonStep: (currentComparisonStep: number) => set({ currentComparisonStep }),
   
   reset: () => set({
     runId: null,
@@ -82,6 +107,11 @@ export const useSimulationStore = create<SimulationState>((set) => ({
     latestGuidance: null,
     ticks: [],
     guidanceHistory: [],
+    comparisonMode: false,
+    ppoRun: null,
+    hybridRun: null,
+    comparisonMetrics: null,
+    currentComparisonStep: 0,
     logs: [],
   }),
 }));

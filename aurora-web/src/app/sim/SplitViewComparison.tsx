@@ -1,79 +1,114 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSimulationStore } from "@/shared/store";
 import { MapStage } from "./MapStage";
-import { ArrowLeftRight, TrendingUp, TrendingDown, X } from "lucide-react";
-
-interface ComparisonMetrics {
-  areaSaved: number;
-  timeImprovement: number;
-  waterEfficiency: number;
-  successRateDelta: number;
-}
+import { ArrowLeftRight, TrendingUp, TrendingDown, X, Loader2 } from "lucide-react";
+import { 
+  generateMockRuns, 
+  calculateComparisonMetrics,
+  getMaxSteps,
+  type ComparisonMetrics as ComparisonMetricsType
+} from "@/shared/runsDataLoader";
 
 interface SplitViewComparisonProps {
   onClose?: () => void;
 }
 
 export function SplitViewComparison({ onClose }: SplitViewComparisonProps = {}) {
-  const ticks = useSimulationStore((state) => state.ticks);
-  const [metrics, setMetrics] = useState<ComparisonMetrics>({
-    areaSaved: 0,
-    timeImprovement: 0,
-    waterEfficiency: 0,
-    successRateDelta: 0,
-  });
+  const {
+    ppoRun,
+    hybridRun,
+    comparisonMetrics: storedMetrics,
+    currentComparisonStep,
+    setCurrentComparisonStep,
+    setComparisonRuns,
+  } = useSimulationStore();
 
-  // In a real implementation, this would compare actual PPO vs Hybrid runs
+  const [metrics, setMetrics] = useState<ComparisonMetricsType | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [maxSteps, setMaxSteps] = useState(0);
+  const [animatingMetrics, setAnimatingMetrics] = useState<{
+    areaSavedPercent: number;
+    timeImprovementPercent: number;
+    waterEfficiencyPercent: number;
+    successRateDelta: number;
+  } | null>(null);
+
+  // Initialize runs on component mount
   useEffect(() => {
-    if (ticks.length > 10) {
-      // Simulated comparison metrics (replace with real data)
-      setMetrics({
-        areaSaved: 23.4, // % area saved by hybrid
-        timeImprovement: 18.2, // % faster containment
-        waterEfficiency: 15.7, // % more efficient water use
-        successRateDelta: 12.0, // % higher success rate
-      });
-    }
-  }, [ticks]);
+    const initializeRuns = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Try to load from store first
+        if (ppoRun && hybridRun) {
+          const computed = calculateComparisonMetrics(ppoRun, hybridRun);
+          setMetrics(computed);
+          setMaxSteps(getMaxSteps(ppoRun, hybridRun));
+          setAnimatingMetrics({
+            areaSavedPercent: computed.areaSavedPercent,
+            timeImprovementPercent: computed.timeImprovementPercent,
+            waterEfficiencyPercent: computed.waterEfficiencyPercent,
+            successRateDelta: computed.successRateDelta,
+          });
+        } else {
+          // Load mock data (in production, this would fetch real runs)
+          const { ppo, hybrid } = generateMockRuns();
+          const computed = calculateComparisonMetrics(ppo, hybrid);
+          
+          // Store in Zustand
+          setComparisonRuns(ppo, hybrid, computed);
+          setMetrics(computed);
+          setMaxSteps(getMaxSteps(ppo, hybrid));
+          setAnimatingMetrics({
+            areaSavedPercent: computed.areaSavedPercent,
+            timeImprovementPercent: computed.timeImprovementPercent,
+            waterEfficiencyPercent: computed.waterEfficiencyPercent,
+            successRateDelta: computed.successRateDelta,
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing comparison runs:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeRuns();
+  }, [ppoRun, hybridRun, setComparisonRuns]);
+
+  // Use stored metrics as fallback
+  const displayMetrics = metrics || storedMetrics;
+
+  const handleStepChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentComparisonStep(parseInt(event.target.value));
+  }, [setCurrentComparisonStep]);
+
+  if (isLoading || !displayMetrics) {
+    return (
+      <div className="flex flex-col h-full bg-gray-950">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-purple-500 mx-auto mb-4" />
+            <p className="text-gray-400">Loading PPO vs Hybrid comparison...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const progressPercent = maxSteps > 0 ? (currentComparisonStep / maxSteps) * 100 : 0;
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Delta KPI Banner */}
-      <div className="bg-gradient-to-r from-purple-900 to-blue-900 border-b border-purple-700 px-6 py-3">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <h3 className="text-white font-semibold flex items-center gap-2">
-            <ArrowLeftRight className="w-5 h-5" />
-            PPO Baseline vs Hybrid Comparison
+    <div className="flex flex-col h-full bg-gray-950">
+      {/* Delta KPI Banner with Real Metrics */}
+      <div className="bg-gradient-to-r from-purple-900 to-blue-900 border-b border-purple-700 px-6 py-4">
+        <div className="flex items-center justify-between max-w-full">
+          <h3 className="text-white font-bold flex items-center gap-3 text-lg">
+            <ArrowLeftRight className="w-6 h-6" />
+            PPO Baseline vs Hybrid (PPO + LLM) Comparison
           </h3>
-
-          <div className="flex items-center gap-6">
-            <DeltaMetric
-              label="Area Saved"
-              value={metrics.areaSaved}
-              unit="%"
-              positive={true}
-            />
-            <DeltaMetric
-              label="Time Improvement"
-              value={metrics.timeImprovement}
-              unit="%"
-              positive={true}
-            />
-            <DeltaMetric
-              label="Water Efficiency"
-              value={metrics.waterEfficiency}
-              unit="%"
-              positive={true}
-            />
-            <DeltaMetric
-              label="Success Rate"
-              value={metrics.successRateDelta}
-              unit="%"
-              positive={true}
-            />
-          </div>
 
           {onClose && (
             <button
@@ -85,48 +120,109 @@ export function SplitViewComparison({ onClose }: SplitViewComparisonProps = {}) 
             </button>
           )}
         </div>
+
+        {/* Metrics Display */}
+        <div className="mt-4 grid grid-cols-4 gap-4">
+          <DeltaMetric
+            label="Area Saved"
+            value={animatingMetrics?.areaSavedPercent || 0}
+            unit="%"
+            positive={true}
+            subtitle="Less burned area"
+          />
+          <DeltaMetric
+            label="Time Improvement"
+            value={animatingMetrics?.timeImprovementPercent || 0}
+            unit="%"
+            positive={true}
+            subtitle="Faster containment"
+          />
+          <DeltaMetric
+            label="Water Efficiency"
+            value={animatingMetrics?.waterEfficiencyPercent || 0}
+            unit="%"
+            positive={true}
+            subtitle="Less water used"
+          />
+          <DeltaMetric
+            label="Success Rate"
+            value={animatingMetrics?.successRateDelta || 0}
+            unit="pp"
+            positive={true}
+            subtitle="Percentage points"
+          />
+        </div>
       </div>
 
       {/* Split View Maps */}
-      <div className="flex-1 flex">
+      <div className="flex-1 flex overflow-hidden">
         {/* Left: PPO Baseline */}
-        <div className="flex-1 border-r border-gray-800 relative">
-          <div className="absolute top-4 left-4 z-10 bg-blue-600 px-3 py-1 rounded-lg text-white text-sm font-semibold">
-            PPO Baseline
+        <div className="flex-1 border-r border-gray-800 relative overflow-hidden">
+          <div className="absolute top-4 left-4 z-20 bg-blue-600/90 px-4 py-2 rounded-lg text-white text-sm font-bold shadow-lg">
+            <div>PPO Baseline</div>
+            <div className="text-xs text-blue-200">Seed: {displayMetrics.ppoRun.seed}</div>
           </div>
-          <MapStage modelType="ppo" />
+          {ppoRun && <MapStage modelType="ppo" currentStep={currentComparisonStep} />}
         </div>
 
         {/* Right: Hybrid */}
-        <div className="flex-1 relative">
-          <div className="absolute top-4 left-4 z-10 bg-purple-600 px-3 py-1 rounded-lg text-white text-sm font-semibold">
-            Hybrid (PPO + LLM)
+        <div className="flex-1 relative overflow-hidden">
+          <div className="absolute top-4 left-4 z-20 bg-purple-600/90 px-4 py-2 rounded-lg text-white text-sm font-bold shadow-lg">
+            <div>Hybrid (PPO + LLM)</div>
+            <div className="text-xs text-purple-200">Seed: {displayMetrics.hybridRun.seed}</div>
           </div>
-          <MapStage modelType="hybrid" />
+          {hybridRun && <MapStage modelType="hybrid" currentStep={currentComparisonStep} />}
         </div>
       </div>
 
       {/* Synchronized Timeline Scrubber */}
-      <div className="bg-gray-900 border-t border-gray-800 px-6 py-3">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-400">Step {ticks.length}</span>
+      <div className="bg-gray-900 border-t border-gray-800 px-6 py-4">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-300 w-12">Step</span>
+            <span className="text-sm font-mono bg-gray-800 px-2 py-1 rounded text-purple-300">
+              {currentComparisonStep} / {maxSteps}
+            </span>
+          </div>
+
+          {/* Range input with custom styling */}
+          <div className="flex-1 relative">
             <input
               type="range"
               min="0"
-              max={ticks.length}
-              value={ticks.length}
-              className="flex-1"
-              disabled
+              max={maxSteps}
+              value={currentComparisonStep}
+              onChange={handleStepChange}
+              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+              style={{
+                background: `linear-gradient(to right, #a855f7 0%, #a855f7 ${progressPercent}%, #374151 ${progressPercent}%, #374151 100%)`
+              }}
             />
-            <span className="text-sm text-gray-400">
-              {ticks.length > 0 ? `${((ticks.length / 200) * 100).toFixed(0)}%` : "0%"}
-            </span>
           </div>
+
+          {/* Progress percentage */}
+          <span className="text-sm font-semibold text-gray-400 w-12 text-right">
+            {maxSteps > 0 ? `${progressPercent.toFixed(0)}%` : "0%"}
+          </span>
+        </div>
+
+        {/* Timeline info */}
+        <div className="mt-2 flex justify-between text-xs text-gray-500">
+          <div>PPO Steps: {displayMetrics.ppoRun.ticks.length}</div>
+          <div>Hybrid Steps: {displayMetrics.hybridRun.ticks.length}</div>
+          <div>Synchronized: {Math.min(displayMetrics.ppoRun.ticks.length, displayMetrics.hybridRun.ticks.length)} steps</div>
         </div>
       </div>
     </div>
   );
+}
+
+interface DeltaMetricProps {
+  label: string;
+  value: number;
+  unit: string;
+  positive: boolean;
+  subtitle?: string;
 }
 
 function DeltaMetric({
@@ -134,26 +230,24 @@ function DeltaMetric({
   value,
   unit,
   positive,
-}: {
-  label: string;
-  value: number;
-  unit: string;
-  positive: boolean;
-}) {
+  subtitle,
+}: DeltaMetricProps) {
   const Icon = positive ? TrendingUp : TrendingDown;
-  const colorClass = positive ? "text-green-400" : "text-red-400";
+  const colorClass = positive ? "text-emerald-400" : "text-red-400";
+  const bgClass = positive ? "bg-emerald-500/10" : "bg-red-500/10";
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="text-xs text-gray-400">{label}</div>
-      <div className={`flex items-center gap-1 font-semibold ${colorClass}`}>
-        <Icon className="w-4 h-4" />
+    <div className={`${bgClass} border border-gray-700 rounded-lg p-3`}>
+      <div className="text-xs text-gray-400 font-medium">{label}</div>
+      <div className={`flex items-center gap-2 mt-2 font-bold text-xl ${colorClass}`}>
+        <Icon className="w-5 h-5 flex-shrink-0" />
         <span>
           {positive ? "+" : ""}
           {value.toFixed(1)}
-          {unit}
+          <span className="text-sm ml-1">{unit}</span>
         </span>
       </div>
+      {subtitle && <div className="text-xs text-gray-500 mt-1">{subtitle}</div>}
     </div>
   );
 }
