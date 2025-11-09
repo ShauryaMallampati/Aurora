@@ -41,75 +41,54 @@ interface ExperimentStatus {
 }
 
 export function ExperimentLabDashboard() {
-  const [experimentId, setExperimentId] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<'ppo' | 'hybrid'>('hybrid');
   const [selectedPhase, setSelectedPhase] = useState<string>('quick');
-  const [status, setStatus] = useState<ExperimentStatus | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [metrics, setMetrics] = useState<ExperimentMetrics[]>([]);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [trainingData, setTrainingData] = useState<ExperimentMetrics[]>([]);
+  const [realMetricsLoaded, setRealMetricsLoaded] = useState(false);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
 
-  // Polling interval (2 seconds)
-  const POLL_INTERVAL = 2000;
-
-  // Start experiment
-  const handleStartExperiment = useCallback(async () => {
-    try {
-      const response = await fetch('/api/run_experiment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: selectedMode,
-          phase: selectedPhase,
-        }),
-      });
-
-      const data = await response.json();
-      setExperimentId(data.id);
-      setStatus(data);
-      setIsRunning(true);
-      setAutoRefresh(true);
-    } catch (error) {
-      console.error('Failed to start experiment:', error);
-      alert('Failed to start experiment');
-    }
-  }, [selectedMode, selectedPhase]);
-
-  // Fetch experiment status
-  const fetchExperimentStatus = useCallback(async () => {
-    if (!experimentId) return;
-
-    try {
-      const response = await fetch(`/api/run_experiment?id=${experimentId}`);
-      const data: ExperimentStatus = await response.json();
-
-      setStatus(data);
-      setMetrics(data.metrics || []);
-
-      // Stop polling when experiment completes
-      if (data.status === 'completed' || data.status === 'failed') {
-        setIsRunning(false);
-        setAutoRefresh(false);
-      }
-    } catch (error) {
-      console.error('Failed to fetch status:', error);
-    }
-  }, [experimentId]);
-
-  // Auto-refresh polling
+  // Fetch real training metrics on component mount
   useEffect(() => {
-    if (!autoRefresh || !experimentId) return;
+    const fetchRealMetrics = async () => {
+      try {
+        const response = await fetch('/api/metrics/training');
+        if (!response.ok) throw new Error('Failed to fetch metrics');
+        
+        const data = await response.json();
+        
+        // Convert real training data to ExperimentMetrics format
+        if (data.training_trend && Array.isArray(data.training_trend)) {
+          const convertedMetrics: ExperimentMetrics[] = data.training_trend.map((point: any) => ({
+            step: point.step || 0,
+            episode_return: selectedMode === 'hybrid' 
+              ? (point.hybrid_return || point.episode_return || 0)
+              : (point.ppo_return || point.episode_return || 0),
+            completion_rate: (point.hybrid_success_rate || point.ppo_success_rate || 0) / 100,
+            idle_steps: Math.round((point.idle_steps || 0)),
+            llm_latency_ms: (point.llm_latency_ms || 0),
+            timestamp: point.timestamp || new Date().toISOString(),
+          }));
+          
+          setTrainingData(convertedMetrics);
+          setRealMetricsLoaded(true);
+          setLoadingError(null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch real metrics:', error);
+        setLoadingError('Unable to load real training data');
+        setRealMetricsLoaded(true);
+      }
+    };
 
-    const interval = setInterval(fetchExperimentStatus, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [autoRefresh, experimentId, fetchExperimentStatus]);
+    fetchRealMetrics();
+  }, [selectedMode]);
 
-  // Calculate statistics
+  // Calculate statistics from real training data
   const stats = {
-    avgReturn: metrics.length > 0 ? (metrics.reduce((sum, m) => sum + m.episode_return, 0) / metrics.length).toFixed(2) : '0',
-    avgCompletion: metrics.length > 0 ? (metrics.reduce((sum, m) => sum + m.completion_rate, 0) / metrics.length * 100).toFixed(1) : '0',
-    avgIdle: metrics.length > 0 ? (metrics.reduce((sum, m) => sum + m.idle_steps, 0) / metrics.length).toFixed(0) : '0',
-    avgLatency: metrics.length > 0 ? (metrics.reduce((sum, m) => sum + m.llm_latency_ms, 0) / metrics.length).toFixed(2) : '0',
+    avgReturn: trainingData.length > 0 ? (trainingData.reduce((sum, m) => sum + m.episode_return, 0) / trainingData.length).toFixed(2) : '0',
+    avgCompletion: trainingData.length > 0 ? (trainingData.reduce((sum, m) => sum + m.completion_rate, 0) / trainingData.length * 100).toFixed(1) : '0',
+    avgIdle: trainingData.length > 0 ? (trainingData.reduce((sum, m) => sum + m.idle_steps, 0) / trainingData.length).toFixed(0) : '0',
+    avgLatency: trainingData.length > 0 ? (trainingData.reduce((sum, m) => sum + m.llm_latency_ms, 0) / trainingData.length).toFixed(2) : '0',
   };
 
   return (
@@ -131,8 +110,7 @@ export function ExperimentLabDashboard() {
           <select
             value={selectedMode}
             onChange={(e) => setSelectedMode(e.target.value as 'ppo' | 'hybrid')}
-            disabled={isRunning}
-            className="w-full bg-slate-800 border border-slate-700 text-white rounded px-3 py-2 hover:border-slate-600 disabled:opacity-50"
+            className="w-full bg-slate-800 border border-slate-700 text-white rounded px-3 py-2 hover:border-slate-600"
           >
             <option value="ppo">PPO Baseline</option>
             <option value="hybrid">Hybrid PPO+LLM</option>
@@ -145,8 +123,7 @@ export function ExperimentLabDashboard() {
           <select
             value={selectedPhase}
             onChange={(e) => setSelectedPhase(e.target.value)}
-            disabled={isRunning}
-            className="w-full bg-slate-800 border border-slate-700 text-white rounded px-3 py-2 hover:border-slate-600 disabled:opacity-50"
+            className="w-full bg-slate-800 border border-slate-700 text-white rounded px-3 py-2 hover:border-slate-600"
           >
             <option value="quick">Quick (100 steps)</option>
             <option value="phase_a">Phase A (57K steps, ~1-2h)</option>
@@ -156,70 +133,39 @@ export function ExperimentLabDashboard() {
           </select>
         </div>
 
-        {/* Action Buttons */}
-        <div>
-          <label className="block text-sm font-semibold text-white mb-2">Actions</label>
-          <div className="flex gap-2">
-            <button
-              onClick={handleStartExperiment}
-              disabled={isRunning}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 text-white px-3 py-2 rounded font-semibold flex items-center justify-center gap-2 transition"
-            >
-              <Play className="w-4 h-4" />
-              {isRunning ? 'Running...' : 'Start'}
-            </button>
-            <button
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              disabled={!isRunning}
-              className={`flex-1 ${
-                autoRefresh ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600'
-              } text-white px-3 py-2 rounded font-semibold flex items-center justify-center gap-2 transition disabled:opacity-50`}
-            >
-              {autoRefresh ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              {autoRefresh ? 'Pause' : 'Resume'}
-            </button>
-          </div>
+        {/* Data Status */}
+        <div className="bg-slate-800 border border-slate-700 rounded px-4 py-2 flex items-center">
+          {!realMetricsLoaded ? (
+            <span className="text-yellow-400 text-sm">⏳ Loading real metrics...</span>
+          ) : loadingError ? (
+            <span className="text-red-400 text-sm">⚠️ {loadingError}</span>
+          ) : (
+            <span className="text-emerald-400 text-sm">✓ Real data loaded • {trainingData.length} data points</span>
+          )}
         </div>
       </div>
 
-      {/* Status Bar */}
-      {status && (
+      {/* Data Summary */}
+      {realMetricsLoaded && !loadingError && trainingData.length > 0 && (
         <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-gray-400">Mode:</span>
-              <span className="ml-2 font-semibold text-white">{status.mode.toUpperCase()}</span>
+              <span className="ml-2 font-semibold text-white capitalize">{selectedMode}</span>
             </div>
             <div>
-              <span className="text-gray-400">Phase:</span>
-              <span className="ml-2 font-semibold text-white">{status.phase}</span>
+              <span className="text-gray-400">Data Source:</span>
+              <span className="ml-2 font-semibold text-emerald-400">Aurora Training</span>
             </div>
             <div>
-              <span className="text-gray-400">Status:</span>
-              <span
-                className={`ml-2 font-semibold ${
-                  status.status === 'running'
-                    ? 'text-emerald-400'
-                    : status.status === 'completed'
-                    ? 'text-blue-400'
-                    : status.status === 'failed'
-                    ? 'text-red-400'
-                    : 'text-yellow-400'
-                }`}
-              >
-                {status.status.toUpperCase()}
-              </span>
+              <span className="text-gray-400">Total Steps:</span>
+              <span className="ml-2 font-semibold text-white">{(trainingData[trainingData.length - 1]?.step || 0).toLocaleString()}</span>
             </div>
             <div>
-              <span className="text-gray-400">Time:</span>
-              <span className="ml-2 font-semibold text-white">{Math.floor(status.elapsed_seconds / 60)}m</span>
+              <span className="text-gray-400">Data Points:</span>
+              <span className="ml-2 font-semibold text-white">{trainingData.length}</span>
             </div>
           </div>
-          {metrics.length > 0 && (
-            <div className="mt-3 text-xs text-gray-400">
-              {metrics.length} metrics collected • Latest step: {metrics[metrics.length - 1]?.step}
-            </div>
-          )}
         </div>
       )}
 
@@ -247,7 +193,7 @@ export function ExperimentLabDashboard() {
       </div>
 
       {/* Charts Grid */}
-      {metrics.length > 0 && (
+      {trainingData.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 1. Episode Return Trend */}
           <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
@@ -256,7 +202,7 @@ export function ExperimentLabDashboard() {
               Episode Return Trend
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={metrics}>
+              <AreaChart data={trainingData}>
                 <defs>
                   <linearGradient id="colorReturn" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -300,7 +246,7 @@ export function ExperimentLabDashboard() {
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart
-                data={metrics.slice(-20)} // Last 20 points for clarity
+                data={trainingData.slice(-20)} // Last 20 points for clarity
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="step" stroke="#94a3b8" tick={{ fontSize: 12 }} />
@@ -326,7 +272,7 @@ export function ExperimentLabDashboard() {
               Idle Steps Progression
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={metrics}>
+              <LineChart data={trainingData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis
                   dataKey="step"
@@ -364,7 +310,7 @@ export function ExperimentLabDashboard() {
               LLM Strategy Latency (ms)
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={metrics}>
+              <AreaChart data={trainingData}>
                 <defs>
                   <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
@@ -403,12 +349,12 @@ export function ExperimentLabDashboard() {
       )}
 
       {/* Empty State */}
-      {metrics.length === 0 && !isRunning && (
+      {trainingData.length === 0 && realMetricsLoaded && (
         <div className="bg-slate-800 border border-slate-700 border-dashed rounded-lg p-12 text-center">
           <Zap className="w-12 h-12 text-gray-600 mx-auto mb-4 opacity-50" />
-          <p className="text-gray-400 mb-4">No experiments running</p>
+          <p className="text-gray-400 mb-4">No training data available</p>
           <p className="text-sm text-gray-500">
-            Select a training mode and phase, then click "Start" to begin a new experiment
+            Check if the AURORA training pipeline has generated metrics data
           </p>
         </div>
       )}

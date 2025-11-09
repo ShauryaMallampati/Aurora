@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -14,44 +14,141 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Cell,
 } from 'recharts';
-import { TrendingUp, BarChart3, Activity, Filter, Download } from 'lucide-react';
+import { TrendingUp, BarChart3, Activity, Filter, Download, AlertCircle } from 'lucide-react';
 
-// Mock training data for demonstration
-const trainingTrendData = [
-  { episode: 1, ppo_return: 45, hybrid_return: 52, ppo_loss: 0.85, hybrid_loss: 0.78 },
-  { episode: 5, ppo_return: 68, hybrid_return: 105, ppo_loss: 0.62, hybrid_loss: 0.45 },
-  { episode: 10, ppo_return: 92, hybrid_return: 165, ppo_loss: 0.48, hybrid_loss: 0.32 },
-  { episode: 20, ppo_return: 125, hybrid_return: 248, ppo_loss: 0.35, hybrid_loss: 0.22 },
-  { episode: 30, ppo_return: 156, hybrid_return: 312, ppo_loss: 0.28, hybrid_loss: 0.18 },
-  { episode: 50, ppo_return: 198, hybrid_return: 385, ppo_loss: 0.22, hybrid_loss: 0.15 },
-  { episode: 75, ppo_return: 245, hybrid_return: 445, ppo_loss: 0.18, hybrid_loss: 0.12 },
-  { episode: 100, ppo_return: 298, hybrid_return: 512, ppo_loss: 0.15, hybrid_loss: 0.09 },
-];
-
-const completionRateData = [
-  { fireSize: 'Small', ppo: 72, hybrid: 94, baseline: 48 },
-  { fireSize: 'Medium', ppo: 58, hybrid: 82, baseline: 35 },
-  { fireSize: 'Large', ppo: 42, hybrid: 71, baseline: 22 },
-  { fireSize: 'Extreme', ppo: 28, hybrid: 51, baseline: 12 },
-];
-
-const decisionLatencyData = Array.from({ length: 50 }, (_, i) => ({
-  latency_ms: Math.random() * 150 + 10,
-  model: i % 2 === 0 ? 'PPO' : 'Hybrid',
-}));
-
-const performanceMetrics = [
-  { label: 'Avg Episode Return', ppo: '298', hybrid: '512', improvement: '+72%' },
-  { label: 'Success Rate (Fires Contained)', ppo: '58%', hybrid: '82%', improvement: '+24%' },
-  { label: 'Avg Decision Latency', ppo: '85ms', hybrid: '92ms', improvement: '-8ms' },
-  { label: 'Training Time', ppo: '4.2h', hybrid: '6.1h', improvement: '+45%' },
-];
+interface TrainingMetrics {
+  training: {
+    total_timesteps: number;
+    episodes_completed: number;
+    fire_scenarios_trained: number;
+  };
+  model_performance: {
+    ppo: Record<string, number | string>;
+    hybrid: Record<string, number | string>;
+  };
+  success_by_fire_size: Record<string, Record<string, number>>;
+  episode_returns: Array<Record<string, number>>;
+  improvements: Record<string, number>;
+  decision_latency: Record<string, Record<string, number>>;
+  llm_metrics: Record<string, number | string>;
+  safety_metrics: Record<string, number | string>;
+}
 
 export function PerformanceDashboard() {
   const [filterModel, setFilterModel] = useState<'all' | 'ppo' | 'hybrid'>('all');
   const [filterFireSize, setFilterFireSize] = useState<'all' | 'small' | 'medium' | 'large' | 'extreme'>('all');
+  const [metrics, setMetrics] = useState<TrainingMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const response = await fetch('/api/metrics/training');
+        if (!response.ok) throw new Error('Failed to fetch metrics');
+        const data = await response.json();
+        setMetrics(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching metrics:', err);
+        setError('Failed to load real training metrics');
+        setLoading(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMetrics();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-400">Loading real training metrics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !metrics) {
+    return (
+      <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-6">
+        <div className="flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-yellow-400" />
+          <div>
+            <p className="text-yellow-300 font-semibold">{error || 'No metrics available'}</p>
+            <p className="text-sm text-yellow-200 mt-1">Make sure your training pipeline is running.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const trainingData = metrics.episode_returns;
+  const completionData = [
+    {
+      fireSize: 'Small',
+      ppo: metrics.success_by_fire_size.small.ppo,
+      hybrid: metrics.success_by_fire_size.small.hybrid,
+      baseline: metrics.success_by_fire_size.small.baseline,
+    },
+    {
+      fireSize: 'Medium',
+      ppo: metrics.success_by_fire_size.medium.ppo,
+      hybrid: metrics.success_by_fire_size.medium.hybrid,
+      baseline: metrics.success_by_fire_size.medium.baseline,
+    },
+    {
+      fireSize: 'Large',
+      ppo: metrics.success_by_fire_size.large.ppo,
+      hybrid: metrics.success_by_fire_size.large.hybrid,
+      baseline: metrics.success_by_fire_size.large.baseline,
+    },
+    {
+      fireSize: 'Extreme',
+      ppo: metrics.success_by_fire_size.extreme.ppo,
+      hybrid: metrics.success_by_fire_size.extreme.hybrid,
+      baseline: metrics.success_by_fire_size.extreme.baseline,
+    },
+  ];
+
+  const decisionLatencyData = Array.from({ length: 50 }, (_, i) => ({
+    latency_ms: metrics.decision_latency[i % 2 === 0 ? 'ppo' : 'hybrid'].mean + (Math.random() - 0.5) * 30,
+    model: i % 2 === 0 ? 'PPO' : 'Hybrid',
+  }));
+
+  const ppoPerf = metrics.model_performance.ppo as Record<string, number | string>;
+  const hybridPerf = metrics.model_performance.hybrid as Record<string, number | string>;
+
+  const performanceMetrics = [
+    {
+      label: 'Avg Episode Return',
+      ppo: String(ppoPerf.avg_episode_return),
+      hybrid: String(hybridPerf.avg_episode_return),
+      improvement: `+${Math.round(((hybridPerf.avg_episode_return as number) - (ppoPerf.avg_episode_return as number)) / (ppoPerf.avg_episode_return as number) * 100)}%`,
+    },
+    {
+      label: 'Success Rate (Fires Contained)',
+      ppo: `${ppoPerf.success_rate_percent}%`,
+      hybrid: `${hybridPerf.success_rate_percent}%`,
+      improvement: `+${(hybridPerf.success_rate_percent as number) - (ppoPerf.success_rate_percent as number)}%`,
+    },
+    {
+      label: 'Avg Decision Latency',
+      ppo: `${ppoPerf.avg_decision_latency_ms}ms`,
+      hybrid: `${hybridPerf.avg_decision_latency_ms}ms`,
+      improvement: `+${(hybridPerf.avg_decision_latency_ms as number) - (ppoPerf.avg_decision_latency_ms as number)}ms`,
+    },
+    {
+      label: 'Training Time',
+      ppo: `${ppoPerf.training_time_hours}h`,
+      hybrid: `${hybridPerf.training_time_hours}h`,
+      improvement: `+${(((hybridPerf.training_time_hours as number) - (ppoPerf.training_time_hours as number)) / (ppoPerf.training_time_hours as number) * 100).toFixed(0)}%`,
+    },
+  ];
 
   const getModelColor = (model: string) => {
     switch (model) {
@@ -157,7 +254,7 @@ export function PerformanceDashboard() {
 
         <ResponsiveContainer width="100%" height={300}>
           <LineChart
-            data={trainingTrendData}
+            data={trainingData}
             margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -220,7 +317,7 @@ export function PerformanceDashboard() {
 
         <ResponsiveContainer width="100%" height={300}>
           <BarChart
-            data={completionRateData}
+            data={completionData}
             margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
