@@ -73,22 +73,21 @@ class HybridRealFireEnv(gym.Env):
                  hf_token: Optional[str] = None,
                  llm_backend: str = 'transformers'):
         super().__init__()
-        
         self.grid_size = grid_size
         self.num_drones = num_drones
         self.max_steps = max_steps
         self.current_step = 0
-        
-        # Real data integrator
         self.integrator = integrator
-        
-        # Hybrid LLM agent
-        self.hybrid_agent = HybridPPOLLMAgent(
-            llm_model=llm_model,
-            llm_guidance_frequency=llm_guidance_freq,
-            hf_token=hf_token,
-            llm_backend=llm_backend
-        )
+        # If LLM is disabled (cadence very high or model is None/empty), skip LLM agent
+        if (llm_guidance_freq is not None and llm_guidance_freq >= 999999) or not llm_model or llm_model.lower() == 'none':
+            self.hybrid_agent = None  # No LLM, pure PPO
+        else:
+            self.hybrid_agent = HybridPPOLLMAgent(
+                llm_model=llm_model,
+                llm_guidance_frequency=llm_guidance_freq,
+                hf_token=hf_token,
+                llm_backend=llm_backend
+            )
         
         # Observation space: 3x3 grid around drone with 9 channels
         # Original 6 channels + 3 strategic channels from LLM:
@@ -198,7 +197,12 @@ class HybridRealFireEnv(gym.Env):
         }
     
     def _update_strategy(self):
-        """Get strategic guidance from LLM."""
+        """Get strategic guidance from LLM (or skip if LLM disabled)."""
+        if self.hybrid_agent is None:
+            # LLM disabled for pure PPO baseline
+            self.current_strategy = None
+            return
+        
         if self.hybrid_agent.should_request_guidance(self.current_step):
             # Prepare drone states
             drone_positions = [tuple(d.position) for d in self.drones]
@@ -464,6 +468,12 @@ def main():
     # === OTHER ===
     parser.add_argument('--verbose', type=int, default=1,
                        help='Verbosity level')
+
+    # === BASELINE/EXPERIMENTAL ===
+    parser.add_argument('--seed', type=int, default=None,
+                        help='Random seed for reproducibility (optional)')
+    parser.add_argument('--output_dir', type=str, default=None,
+                        help='Output directory for model and logs (optional)')
     
     args = parser.parse_args()
     
@@ -476,6 +486,16 @@ def main():
         'quick': {'steps': 50_000, 'name': 'Quick Test (50K)'},
         'test': {'steps': 10_000, 'name': 'Debug Test (10K)'}
     }
+
+    # === SET RANDOM SEED IF PROVIDED ===
+    if args.seed is not None:
+        import random
+        import torch
+        np.random.seed(args.seed)
+        random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(args.seed)
     
     # Determine timesteps
     if args.timesteps:
@@ -642,12 +662,16 @@ def main():
         print("="*80 + "\n")
         
         # Save final model
-        results_dir = _BASE_DIR / 'results'
-        results_dir.mkdir(parents=True, exist_ok=True)
-        
+        if args.output_dir is not None:
+            results_dir = _Path(args.output_dir)
+            results_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            results_dir = _BASE_DIR / 'results'
+            results_dir.mkdir(parents=True, exist_ok=True)
+
         save_base = results_dir / 'aurora_hybrid_ppo_llm_model'
         model.save(str(save_base))
-        
+
         zip_path = save_base.with_suffix('.zip')
         extract_dir = save_base
         try:
@@ -659,7 +683,7 @@ def main():
                 print(f"💾 Hybrid model saved at {save_base.resolve()}")
         except Exception as e:
             print(f"⚠️  Warning: failed to unpack model zip: {e}")
-        
+
         # Save training summary
         summary = {
             'model_type': 'hybrid_ppo_llm',
@@ -673,11 +697,11 @@ def main():
             'weather_source': 'NOAA National Weather Service API',
             'date': datetime.now().isoformat()
         }
-        
+
         summary_path = results_dir / 'hybrid_training_summary.json'
         with open(str(summary_path), 'w') as f:
             json.dump(summary, f, indent=2)
-        
+
         print(f"📊 Training summary saved to {summary_path.resolve()}\n")
         
     except KeyboardInterrupt:
