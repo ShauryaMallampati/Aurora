@@ -1,18 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #0a0a0b;
+  --foreground: #ffffff;
+  --muted: #71717a;
+  --fire-orange: #ea580c;
+  --fire-gold: #f97316;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
@@ -21,39 +26,110 @@ body {
   margin: 0;
 }
 
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Refined scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
-@keyframes spotlight {
+/* Selection */
+::selection {
+  background: rgba(234, 88, 12, 0.3);
+  color: white;
+}
+
+/* Fire/Ember Animations */
+@keyframes float-up {
   0% {
+    transform: translateY(0) translateX(0) scale(1);
     opacity: 0;
-    transform: translate(-50%, -50%) scale(1);
   }
-  50% {
-    opacity: 0.1;
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.8;
   }
   100% {
+    transform: translateY(-100vh) translateX(20px) scale(0.5);
     opacity: 0;
-    transform: translate(-50%, -50%) scale(1);
   }
 }
 
-.animate-spotlight {
-  animation: spotlight 3s ease-in-out infinite;
+@keyframes ember-glow {
+  0%, 100% {
+    filter: brightness(1) blur(0px);
+  }
+  50% {
+    filter: brightness(1.5) blur(1px);
+  }
+}
+
+@keyframes pulse-fire {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+/* Ember particles utility class */
+.ember {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  border-radius: 50%;
+  animation: float-up 8s ease-in-out infinite, ember-glow 2s ease-in-out infinite;
+}
+
+.ember:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 7s; }
+.ember:nth-child(2) { left: 20%; animation-delay: 1s; animation-duration: 9s; }
+.ember:nth-child(3) { left: 30%; animation-delay: 2s; animation-duration: 8s; }
+.ember:nth-child(4) { left: 40%; animation-delay: 0.5s; animation-duration: 10s; }
+.ember:nth-child(5) { left: 50%; animation-delay: 1.5s; animation-duration: 7.5s; }
+.ember:nth-child(6) { left: 60%; animation-delay: 2.5s; animation-duration: 8.5s; }
+.ember:nth-child(7) { left: 70%; animation-delay: 0.3s; animation-duration: 9.5s; }
+.ember:nth-child(8) { left: 80%; animation-delay: 1.8s; animation-duration: 7.2s; }
+.ember:nth-child(9) { left: 90%; animation-delay: 2.2s; animation-duration: 8.8s; }
+
+/* Gradient text utility */
+.text-gradient-fire {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Fire glow effect */
+.fire-glow {
+  box-shadow: 
+    0 0 20px rgba(249, 115, 22, 0.15),
+    0 0 40px rgba(234, 88, 12, 0.1);
+}
+
+/* Card hover fire effect */
+.card-fire-hover {
+  transition: all 0.3s ease;
+}
+
+.card-fire-hover:hover {
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: 0 0 30px -10px rgba(249, 115, 22, 0.3);
 }

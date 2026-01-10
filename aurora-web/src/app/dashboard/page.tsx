@@ -5,12 +5,9 @@ import { PerformanceDashboard } from '@/components/performance-dashboard';
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-gray-950">
-      {/* Navigation */}
+    <div className="min-h-screen bg-[#0a0a0b] text-white">
       <Navigation />
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-6 py-10">
         <PerformanceDashboard />
       </div>
     </div>

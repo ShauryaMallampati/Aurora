@@ -35,7 +35,7 @@ export default function SimulationPage() {
     addLog(`Drones: ${fireConfig.numDrones}, Water: ${fireConfig.waterAmount}gal each`);
     addLog(`Estimated cost: $${fireConfig.estimatedCost.toLocaleString()}`);
     setShowFireCreator(false);
-    
+
     // TODO: Implement actual simulation start with this config
     // For now just log it - backend integration needed
   };
@@ -43,16 +43,16 @@ export default function SimulationPage() {
   // If split view is enabled, show comparison instead
   if (showSplitView) {
     return (
-      <div className="h-screen flex flex-col bg-gray-950">
+      <div className="h-screen flex flex-col bg-[#0a0a0b]">
         <SplitViewComparison onClose={() => setShowSplitView(false)} />
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-950">
+    <div className="h-screen flex flex-col bg-[#0a0a0b]">
       {/* Top Control Bar */}
-      <ControlBar 
+      <ControlBar
         onToggleSplitView={() => setShowSplitView(true)}
         onOpenFireCreator={() => setShowFireCreator(true)}
       />
@@ -70,7 +70,7 @@ export default function SimulationPage() {
 
       {/* Fire Creator Modal */}
       {showFireCreator && (
-        <FireCreator 
+        <FireCreator
           onClose={() => setShowFireCreator(false)}
           onCreateFire={handleCreateFire}
           onStartSimulation={handleStartSimulationFromFireCreator}

@@ -1,14 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Database, Download, CheckCircle, FileText, Printer } from "lucide-react";
-
-/**
- * Sources & Data Provenance Page
- * 
- * Shows all data sources with checksums and metadata
- * Includes "Print Poster Mode" for generating PDF exports
- */
+import { Database, Download, CheckCircle, FileText, Printer, ExternalLink } from "lucide-react";
+import { Navigation } from "@/shared/Navigation";
 
 interface DataSource {
   name: string;
@@ -100,112 +94,113 @@ export default function SourcesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-8">
-      {/* Header */}
-      <div className="max-w-6xl mx-auto mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Database className="w-8 h-8 text-blue-400" />
-              <h1 className="text-3xl font-bold">Data Sources & Provenance</h1>
+    <div className="min-h-screen bg-[#0a0a0b] text-white">
+      <Navigation />
+
+      {/* Hero */}
+      <header className="border-b border-white/5">
+        <div className="max-w-6xl mx-auto px-6 py-12">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-xs text-white/40 uppercase tracking-wider mb-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                Data Provenance
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight mb-2">Data Sources</h1>
+              <p className="text-white/50 max-w-xl">
+                Complete transparency with cryptographic verification for all training data.
+              </p>
             </div>
-            <p className="text-gray-400">
-              Complete transparency of all data sources with cryptographic verification
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={handleExportMetadata}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium flex items-center gap-2 transition"
-            >
-              <Download className="w-4 h-4" />
-              Export Metadata
-            </button>
-            <button
-              onClick={handlePrintPoster}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold flex items-center gap-2 transition"
-            >
-              <Printer className="w-4 h-4" />
-              Print Poster Mode
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleExportMetadata}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Export
+              </button>
+              <button
+                onClick={handlePrintPoster}
+                className="px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                Print Poster
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Data Sources Table */}
-      <div className="max-w-6xl mx-auto space-y-6">
+      <main className="max-w-6xl mx-auto px-6 py-10 space-y-6">
+        {/* Data Sources */}
         {DATA_SOURCES.map((source, idx) => (
-          <div key={idx} className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+          <div key={idx} className="p-6 rounded-xl bg-white/[0.02] border border-white/5">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-xl font-semibold text-white mb-1">{source.name}</h3>
-                <div className="flex gap-3 text-sm text-gray-400">
+                <h3 className="font-medium text-white mb-1">{source.name}</h3>
+                <div className="flex gap-3 text-xs text-white/40">
                   <span>{source.type}</span>
-                  <span>•</span>
-                  <span>Version: {source.version}</span>
-                  <span>•</span>
-                  <span>Accessed: {source.dateAccessed}</span>
+                  <span>·</span>
+                  <span>v{source.version}</span>
+                  <span>·</span>
+                  <span>{source.dateAccessed}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-green-900 text-green-300 rounded text-sm font-semibold">
-                <CheckCircle className="w-4 h-4" />
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 text-green-400 rounded text-xs font-medium">
+                <CheckCircle className="w-3.5 h-3.5" />
                 Verified
               </div>
             </div>
 
-            <p className="text-gray-300 mb-4">{source.description}</p>
+            <p className="text-[13px] text-white/50 mb-4">{source.description}</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <div className="text-xs text-gray-500 mb-1">Source URL</div>
+                <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Source</div>
                 <a
                   href={source.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 text-sm font-mono break-all"
+                  className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
                 >
-                  {source.url}
+                  {source.url.replace('https://', '').slice(0, 30)}...
+                  <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
               <div>
-                <div className="text-xs text-gray-500 mb-1">Records</div>
-                <div className="text-white font-semibold">{source.records.toLocaleString()}</div>
+                <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Records</div>
+                <div className="text-sm font-medium text-white">{source.records.toLocaleString()}</div>
               </div>
-            </div>
-
-            <div>
-              <div className="text-xs text-gray-500 mb-1">SHA-256 Checksum</div>
-              <div className="bg-gray-800 rounded px-3 py-2 font-mono text-xs text-gray-300 break-all">
-                {source.checksum}
+              <div>
+                <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">SHA-256</div>
+                <div className="text-xs font-mono text-white/50">{source.checksum.slice(0, 25)}...</div>
               </div>
             </div>
           </div>
         ))}
-      </div>
 
-      {/* Model Versions */}
-      <div className="max-w-6xl mx-auto mt-8">
-        <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-purple-400" />
+        {/* Model Versions */}
+        <div className="p-6 rounded-xl bg-white/[0.02] border border-white/5">
+          <h3 className="font-medium text-white mb-4 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-purple-400" />
             Model & Framework Versions
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <div className="text-xs text-gray-500 mb-1">PPO Implementation</div>
-              <div className="text-white font-semibold">stable-baselines3 v2.3.2</div>
+              <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">PPO</div>
+              <div className="text-sm text-white">stable-baselines3 v2.3.2</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500 mb-1">LLM Backend</div>
-              <div className="text-white font-semibold">Qwen/Qwen2.5-7B-Instruct</div>
+              <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">LLM</div>
+              <div className="text-sm text-white">Qwen2.5-7B-Instruct</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500 mb-1">ML Framework</div>
-              <div className="text-white font-semibold">PyTorch 2.1.0</div>
+              <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Framework</div>
+              <div className="text-sm text-white">PyTorch 2.1.0</div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
@@ -213,42 +208,30 @@ export default function SourcesPage() {
 function PosterView() {
   return (
     <div className="min-h-screen bg-white text-black p-8 print:p-4">
-      {/* Poster Header */}
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold mb-2">AURORA</h1>
         <h2 className="text-2xl text-gray-700 mb-4">Hybrid AI for Autonomous Wildfire Suppression</h2>
-        <p className="text-lg text-gray-600">Shaurya Mallampati | ISEF 2025 | Computer Science</p>
+        <p className="text-lg text-gray-600">Shaurya Mallampati & Ankit Mohanty | ISEF 2025</p>
       </div>
 
-      {/* Three columns: Map, Charts, Summary */}
       <div className="grid grid-cols-3 gap-6 mb-8">
-        {/* Left: Map placeholder */}
         <div className="border-2 border-gray-300 rounded-lg p-4 h-64 flex items-center justify-center bg-gray-50">
           <div className="text-center text-gray-500">
             <div className="text-6xl mb-2">🗺️</div>
             <div>Mission Control Screenshot</div>
-            <div className="text-sm">(Camp Fire, CA 2018)</div>
           </div>
         </div>
 
-        {/* Middle: Charts */}
         <div className="space-y-4">
           <div className="border-2 border-gray-300 rounded-lg p-4 h-28 flex items-center justify-center bg-gray-50">
-            <div className="text-center text-gray-500">
-              <div className="text-4xl mb-1">📈</div>
-              <div className="text-sm">Return Curve</div>
-            </div>
+            <div className="text-center text-gray-500">📈 Return Curve</div>
           </div>
           <div className="border-2 border-gray-300 rounded-lg p-4 h-28 flex items-center justify-center bg-gray-50">
-            <div className="text-center text-gray-500">
-              <div className="text-4xl mb-1">📊</div>
-              <div className="text-sm">Completion Rate</div>
-            </div>
+            <div className="text-center text-gray-500">📊 Completion Rate</div>
           </div>
         </div>
 
-        {/* Right: Key findings */}
-        <div className="border-2 border-gray-300 rounded-lg p-4 bg-blue-50">
+        <div className="border-2 border-gray-300 rounded-lg p-4 bg-orange-50">
           <h3 className="font-bold text-lg mb-3">Key Results</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -256,7 +239,7 @@ function PosterView() {
               <span className="font-bold text-green-700">+23.4%</span>
             </div>
             <div className="flex justify-between">
-              <span>Time to Containment:</span>
+              <span>Containment Time:</span>
               <span className="font-bold text-blue-700">-18.2%</span>
             </div>
             <div className="flex justify-between">
@@ -265,13 +248,12 @@ function PosterView() {
             </div>
             <div className="flex justify-between">
               <span>Success Rate:</span>
-              <span className="font-bold text-orange-700">+12.0%</span>
+              <span className="font-bold text-orange-700">92%</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Data Sources */}
       <div className="mb-6">
         <h3 className="font-bold text-xl mb-3">Data Sources</h3>
         <div className="grid grid-cols-2 gap-3 text-xs">
@@ -279,21 +261,16 @@ function PosterView() {
             <div key={idx} className="border border-gray-300 rounded p-2 bg-gray-50">
               <div className="font-semibold">{source.name}</div>
               <div className="text-gray-600">{source.records.toLocaleString()} records</div>
-              <div className="font-mono text-gray-500 truncate">{source.checksum.slice(0, 40)}...</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Summary paragraph */}
       <div className="border-t-2 border-gray-300 pt-4">
         <p className="text-sm leading-relaxed text-gray-800">
-          <strong>Summary:</strong> AURORA combines reinforcement learning (PPO) with large language model strategic guidance
-          to coordinate autonomous drone swarms for wildfire suppression. Trained on 116K+ historical fires with real weather
-          and terrain data, the hybrid system achieves 23% more area saved and 18% faster containment compared to PPO baseline.
-          LLM guidance every 50 steps provides strategic context (wind direction, priority zones, resource allocation) while
-          PPO handles reactive control. System demonstrates superior performance across diverse fire scenarios with full
-          explainability for real-world deployment.
+          <strong>Summary:</strong> AURORA combines PPO reinforcement learning with LLM strategic guidance
+          to coordinate autonomous drone swarms for wildfire suppression. Trained on 116K+ historical fires,
+          the hybrid system achieves 23% more area saved and 18% faster containment.
         </p>
       </div>
     </div>

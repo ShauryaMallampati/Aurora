@@ -2,60 +2,57 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Home } from "lucide-react";
+import { Flame } from "lucide-react";
 
 const NAV_LINKS = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/sim", label: "Mission Control", icon: Activity },
-  { href: "/dashboard", label: "Dashboard", icon: null },
-  { href: "/scenarios", label: "Scenarios", icon: null },
-  { href: "/lab", label: "Lab", icon: null },
-  { href: "/runs", label: "Run History", icon: null },
-  { href: "/export", label: "Export", icon: null },
-  { href: "/sources", label: "Data Sources", icon: null },
+  { href: "/", label: "Home" },
+  { href: "/sim", label: "Mission Control" },
+  { href: "/scenarios", label: "Scenarios" },
+  { href: "/lab", label: "Lab" },
+  { href: "/runs", label: "History" },
+  { href: "/sources", label: "Data" },
 ];
 
 export function Navigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="bg-gray-950/80 backdrop-blur-xl border-b border-gray-800 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4">
+    <nav className="bg-[#0a0a0b]/90 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Activity className="w-6 h-6 text-white" />
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+              <Flame className="w-4 h-4 text-white" />
             </div>
-            <span className="text-xl font-bold text-white">AURORA</span>
+            <span className="text-lg font-semibold tracking-tight">AURORA</span>
           </Link>
 
           {/* Navigation Links */}
           <div className="flex items-center gap-1">
             {NAV_LINKS.map((link) => {
-              const isActive = pathname === link.href;
-              const Icon = link.icon;
-              
+              const isActive = pathname === link.href ||
+                (link.href !== "/" && pathname.startsWith(link.href));
+
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative group ${
-                    isActive
-                      ? "text-white bg-orange-500/20"
-                      : "text-gray-400 hover:text-white hover:bg-gray-800/50"
-                  }`}
+                  className={`px-3 py-1.5 rounded-md text-[13px] transition-colors ${isActive
+                      ? "text-white bg-white/10"
+                      : "text-white/50 hover:text-white hover:bg-white/5"
+                    }`}
                 >
-                  <div className="flex items-center gap-2">
-                    {Icon && <Icon className="w-4 h-4" />}
-                    {link.label}
-                  </div>
-                  {!isActive && (
-                    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300" />
-                  )}
+                  {link.label}
                 </Link>
               );
             })}
+          </div>
+
+          {/* ISEF Badge */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full">
+            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+            <span className="text-xs font-medium text-orange-400">ISEF 2025</span>
           </div>
         </div>
       </div>
