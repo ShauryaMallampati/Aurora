@@ -3,12 +3,7 @@
  * List all available simulation runs with optional filtering
  */
 
-import { readdirSync, readFileSync } from 'fs';
-import { join } from 'path';
 import { NextRequest, NextResponse } from 'next/server';
-
-const RESULTS_DIR = join(process.cwd(), '..', 'results');
-const LOGS_DIR = join(process.cwd(), '..', 'logs');
 
 export async function GET(request: NextRequest) {
   try {

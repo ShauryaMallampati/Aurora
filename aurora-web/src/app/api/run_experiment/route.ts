@@ -71,15 +71,35 @@ export async function POST(request: NextRequest) {
     const experimentId = generateExperimentId();
     const startTime = Date.now();
 
+    // Vercel / Cloud Environment Check
+    if (process.env.VERCEL) {
+      return NextResponse.json({
+        id: experimentId,
+        mode: body.mode,
+        phase: body.phase,
+        status: 'failed',
+        start_time: new Date(startTime).toISOString(),
+        elapsed_seconds: 0,
+        metrics: [],
+        message: 'Training experiments requires a local Python environment and cannot be run on Vercel.',
+      } as ExperimentResponse);
+    }
+
     // Build command
-    const projectRoot = process.env.AURORA_PROJECT_ROOT || '/Users/ankit/Aurora';
+    const projectRoot = process.env.AURORA_PROJECT_ROOT || path.join(process.cwd(), '..');
     const pythonPath = 'python3';
     const scriptPath = path.join(projectRoot, 'train_manager.py');
     const outputDir = path.join(projectRoot, 'results', `exp_${experimentId}`);
 
     // Ensure output directory exists
+    // Only attempt if not on Vercel (redundant check but safe)
     if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
+      try {
+        fs.mkdirSync(outputDir, { recursive: true });
+      } catch (e) {
+        console.error('Failed to create output directory:', e);
+        return NextResponse.json({ error: 'Failed to create output directory' }, { status: 500 });
+      }
     }
 
     const args = [
