@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-// Mock runs (in production, load from results/aurora_runs.json)
+// Fake run data - would load actual results in production
 const MOCK_RUNS = {
   ppo: {
     runId: 'ppo_camp-fire-2018_42',

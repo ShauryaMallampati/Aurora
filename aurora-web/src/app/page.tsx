@@ -51,7 +51,6 @@ export default function HomePage() {
             <Link href="/scenarios" className="text-[13px] text-white/60 hover:text-white transition-colors">Scenarios</Link>
             <Link href="/lab" className="text-[13px] text-white/60 hover:text-white transition-colors">Lab</Link>
             <Link href="/runs" className="text-[13px] text-white/60 hover:text-white transition-colors">History</Link>
-            <Link href="/sources" className="text-[13px] text-white/60 hover:text-white transition-colors">Data Sources</Link>
           </nav>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full">
             <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>
@@ -466,12 +465,42 @@ export default function HomePage() {
                 <p className="text-white/50 mt-2">All data sources are publicly available with cryptographic verification for reproducibility.</p>
               </div>
 
+              {/* Real Firefighting Cost Statistics */}
+              <div className="p-6 rounded-xl bg-gradient-to-br from-red-500/10 to-orange-500/5 border border-orange-500/20">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-orange-500" />
+                  Federal Firefighting Costs (NIFC 2023)
+                </h3>
+                <div className="grid md:grid-cols-4 gap-4 mb-4">
+                  <div className="p-4 rounded-lg bg-black/20">
+                    <div className="text-2xl font-bold text-orange-400">$3.17B</div>
+                    <div className="text-xs text-white/50">Total Federal Suppression (2023)</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-black/20">
+                    <div className="text-2xl font-bold text-orange-400">$2.99B</div>
+                    <div className="text-xs text-white/50">5-Year Average (2019-2023)</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-black/20">
+                    <div className="text-2xl font-bold text-orange-400">~$1,175</div>
+                    <div className="text-xs text-white/50">Avg Cost per Acre (2023)</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-black/20">
+                    <div className="text-2xl font-bold text-orange-400">2.69M</div>
+                    <div className="text-xs text-white/50">Acres Burned (2023)</div>
+                  </div>
+                </div>
+                <p className="text-xs text-white/40">
+                  Source: National Interagency Fire Center (NIFC) Federal Firefighting Costs Statistics. 
+                  The Camp Fire (2018) alone cost $10B in damages. Early detection and rapid response can reduce costs by 60-80%.
+                </p>
+              </div>
+
               <div className="grid md:grid-cols-3 gap-6">
                 {[
                   {
                     value: "116,337",
                     title: "Fire Perimeters",
-                    description: "InterAgency Fire Perimeter History (1878-2024) with SHA-256 checksums"
+                    description: "InterAgency Fire Perimeter History (1308-2024) with SHA-256 checksums"
                   },
                   {
                     value: "2,847",
@@ -492,13 +521,33 @@ export default function HomePage() {
                 ))}
               </div>
 
-              <Link
-                href="/sources"
-                className="flex items-center justify-between p-5 rounded-xl bg-orange-500/10 border border-orange-500/20 hover:bg-orange-500/15 transition-colors"
-              >
-                <span className="text-sm font-medium">View All Data Sources with SHA-256 Checksums</span>
-                <ExternalLink className="w-4 h-4 text-orange-400" />
-              </Link>
+              {/* Additional cost context */}
+              <div className="p-6 rounded-xl bg-white/[0.02] border border-white/5">
+                <h3 className="text-lg font-medium mb-4">Traditional Firefighting Resources</h3>
+                <div className="grid md:grid-cols-2 gap-6 text-sm text-white/60">
+                  <div>
+                    <h4 className="text-white font-medium mb-2">Response Times & Resources</h4>
+                    <ul className="space-y-1 text-[13px]">
+                      <li>• Average response time: 5-8 minutes (structure fires)</li>
+                      <li>• Wildfire initial attack: 10-30 minutes (varies by terrain)</li>
+                      <li>• Single fire hose flow rate: 150-250 gallons/minute</li>
+                      <li>• Average house fire requires: ~3,000 gallons to extinguish</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="text-white font-medium mb-2">Top 10 Costliest Wildfires (Insurance Claims)</h4>
+                    <ul className="space-y-1 text-[13px]">
+                      <li>• Camp Fire (2018): $12.5B adjusted</li>
+                      <li>• Tubbs Fire (2017): $11.1B adjusted</li>
+                      <li>• Woolsey Fire (2018): $5.3B adjusted</li>
+                      <li>• Maui Wildfire (2023): $4.4B</li>
+                    </ul>
+                  </div>
+                </div>
+                <p className="text-xs text-white/40 mt-4">
+                  Sources: NIFC Suppression Costs, Insurance Information Institute (iii.org), NOAA NCEI
+                </p>
+              </div>
             </div>
           </section>
         )}

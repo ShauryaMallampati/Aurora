@@ -1,16 +1,13 @@
 """
-Enhanced entry point for running the AURORA wildfire simulation.
+"""Run wildfire simulations with different drone strategies.
 
-This script provides an enhanced simulation environment that can:
-- Use trained PPO agents instead of heuristics
-- Support multiple agent types (heuristic, PPO, mixed)
-- Include wind, elevation, and weather effects
-- Provide comprehensive logging and analysis
-- Generate detailed performance metrics
-- Create comparison studies between different approaches
-
-This represents Phase 2 of the AURORA project with advanced intelligence
-and complexity.
+Can use:
+- Trained PPO agents
+- Different agent types (heuristic, PPO, mixed)
+- Wind, elevation, weather
+- Logging and analysis
+- Performance metrics
+- Comparison studies
 """
 
 from __future__ import annotations
@@ -34,7 +31,7 @@ except ImportError:
 
 
 class SimulationLogger:
-    """Comprehensive logging system for simulation analysis."""
+    """Tracks what happens during a simulation run."""
     
     def __init__(self, log_dir: str = "logs"):
         self.log_dir = log_dir
@@ -101,7 +98,7 @@ class PPOAgent:
 
 
 def create_agents(agent_configs: List[Dict[str, Any]], fire_sim: FireSim) -> List[DroneAgent]:
-    """Create agents based on configuration."""
+    """Set up drones from the given config."""
     agents = []
     navigable = np.where(fire_sim.terrain != 3)
     available_positions = list(zip(navigable[0], navigable[1]))
@@ -354,7 +351,7 @@ def run_enhanced_simulation(
         log_file = logger.save_logs()
         print(f"Simulation logs saved to: {log_file}")
     
-    # Generate comprehensive analysis
+    # Analyze what happened
     analysis = generate_analysis(
         coverage_history, battery_history, water_history, 
         suppression_history, agents, sim, config
@@ -369,7 +366,7 @@ def run_enhanced_simulation(
 def generate_analysis(coverage_history: List[float], battery_history: List[float],
                      water_history: List[float], suppression_history: List[int],
                      agents: List[DroneAgent], sim: FireSim, config: Dict[str, Any]) -> Dict[str, Any]:
-    """Generate comprehensive analysis of simulation results."""
+    """Analyze how well the simulation went."""
     
     analysis = {
         'config': config,
@@ -396,7 +393,7 @@ def generate_analysis(coverage_history: List[float], battery_history: List[float
 
 
 def save_analysis_plots(analysis: Dict[str, Any], config: Dict[str, Any]) -> None:
-    """Save comprehensive analysis plots."""
+    """Save charts showing what happened."""
     output_dir = os.path.join(os.path.dirname(__file__), 'results')
     os.makedirs(output_dir, exist_ok=True)
     

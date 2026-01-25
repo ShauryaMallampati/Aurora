@@ -10,7 +10,6 @@ const NAV_LINKS = [
   { href: "/scenarios", label: "Scenarios" },
   { href: "/lab", label: "Lab" },
   { href: "/runs", label: "History" },
-  { href: "/sources", label: "Data" },
 ];
 
 export function Navigation() {

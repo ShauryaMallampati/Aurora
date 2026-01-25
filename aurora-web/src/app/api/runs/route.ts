@@ -11,8 +11,7 @@ export async function GET(request: NextRequest) {
     const modelType = searchParams.get('model'); // 'ppo' | 'hybrid'
     const scenario = searchParams.get('scenario');
 
-    // For now, return mock data
-    // In production, read from results/aurora_runs.json
+    // Using fake data for now (would load from results/aurora_runs.json in production)
     const mockRuns = [
       {
         runId: 'ppo_camp-fire-2018_42',

@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Mock scenario status
+    // Simulated scenario (would be real training job status in production)
     const response: ScenarioResponse = {
       id: scenarioId,
       status: 'completed',

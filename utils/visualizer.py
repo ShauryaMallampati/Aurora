@@ -189,7 +189,7 @@ def draw_communication_links(ax, drones: Iterable[DroneAgent], sim: FireSim) -> 
 
 
 def add_legend(ax) -> None:
-    """Add a comprehensive legend to the plot."""
+    """Add a legend showing what the colors mean."""
     legend_elements = [
         plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='green', 
                   markersize=10, label='Forest'),

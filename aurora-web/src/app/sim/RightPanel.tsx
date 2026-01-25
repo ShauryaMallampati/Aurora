@@ -6,12 +6,14 @@ import { TelemetryTab } from "./tabs/TelemetryTab";
 import { GuidanceTab } from "./tabs/GuidanceTab";
 import { ChartsTab } from "./tabs/ChartsTab";
 import { LogsTab } from "./tabs/LogsTab";
+import { WildfireCostComparison } from "@/components/wildfire-cost-comparison";
 
 const TABS = [
   { id: "metrics", label: "Metrics" },
   { id: "telemetry", label: "Telemetry" },
   { id: "guidance", label: "Guidance" },
   { id: "charts", label: "Charts" },
+  { id: "costs", label: "🔥 Real Costs" },
   { id: "logs", label: "Logs" },
 ] as const;
 
@@ -39,11 +41,12 @@ export function RightPanel() {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-4">
   {selectedTab === "metrics" && <MetricsTab />}
   {selectedTab === "telemetry" && <TelemetryTab />}
   {selectedTab === "guidance" && <GuidanceTab />}
   {selectedTab === "charts" && <ChartsTab />}
+  {selectedTab === "costs" && <WildfireCostComparison />}
   {selectedTab === "logs" && <LogsTab />}
       </div>
     </div>

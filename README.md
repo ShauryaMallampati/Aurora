@@ -1,6 +1,6 @@
 # AURORA: Autonomous Unified Response Orchestration for Real-world Actions
 
-## 🔥 Wildfire Containment Through Hybrid LLM-Guided Reinforcement Learning
+## Wildfire Containment Through Hybrid LLM-Guided Reinforcement Learning
 
 AURORA is an AI system that trains autonomous drone swarms to contain wildfires using a hybrid architecture combining **Large Language Models (LLMs)** with **Proximal Policy Optimization (PPO)** reinforcement learning.
 
@@ -8,7 +8,7 @@ AURORA is an AI system that trains autonomous drone swarms to contain wildfires 
 
 ---
 
-## 🎯 What is AURORA?
+## What is AURORA?
 
 AURORA represents a paradigm shift in autonomous fire suppression:
 - **Faster response**: 2-5 minutes vs 15-30 minutes traditional response
@@ -29,7 +29,7 @@ AURORA represents a paradigm shift in autonomous fire suppression:
 
 ---
 
-## 🚀 Quick Start (5 minutes)
+## Quick Start (5 minutes)
 
 ### Prerequisites
 - Python 3.9+
@@ -70,16 +70,14 @@ cd aurora-web && npm run dev
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 - **[docs/ABSTRACT.md](docs/ABSTRACT.md)** - Research abstract (250 words)
 - **[docs/ANALYSIS.md](docs/ANALYSIS.md)** - Complete analysis & results
-- **[AURORA_vs_TRADITIONAL_FIREFIGHTING.md](AURORA_vs_TRADITIONAL_FIREFIGHTING.md)** - Real-world comparison
-- **[CITATIONS.md](CITATIONS.md)** - Data sources & citations
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 AURORA/
@@ -124,7 +122,7 @@ AURORA/
 
 ---
 
-## 🎓 How AURORA Works
+## How AURORA Works
 
 ### Hybrid Architecture
 

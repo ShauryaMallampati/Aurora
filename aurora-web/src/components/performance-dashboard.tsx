@@ -408,8 +408,7 @@ export function PerformanceDashboard() {
         </ResponsiveContainer>
 
         <div className="mt-4 p-3 bg-purple-900/20 border border-purple-700 rounded text-sm text-purple-300">
-          <strong>⚡ Performance Note:</strong> Hybrid agent (avg 92ms) only 8ms slower than PPO (85ms) despite
-          strategic LLM calls every 500 steps. Efficient implementation enables real-time decision-making.
+          <strong>⚡ Performance Note:</strong> Hybrid agent (92ms) is almost as fast as PPO (85ms), even with LLM thinking every 500 steps.
         </div>
       </div>
 

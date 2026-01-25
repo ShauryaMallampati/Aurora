@@ -123,7 +123,7 @@ export class SimulationStream {
   }
 
   private restartMockStream() {
-    // Clear existing interval
+    // Stop any running simulation
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
@@ -131,7 +131,7 @@ export class SimulationStream {
     const maxSteps = this.config?.maxSteps || 150;
 
     const tick = () => {
-      // Handle pause
+      // If paused, don't advance
       if (this.isPaused) {
         return;
       }
@@ -142,11 +142,11 @@ export class SimulationStream {
         return;
       }
 
-      // Generate mock tick
+      // Generate the next step
       const tickData = this.generateMockTick(this.currentStep, maxSteps);
       this.onTickCallback?.(tickData);
 
-      // Generate mock guidance every 50 steps
+      // LLM gives guidance every 50 steps (that's how often it ran in training)
       if (this.currentStep % 50 === 0 && this.currentStep > 0) {
         const guidance = this.generateMockGuidance(this.currentStep);
         this.onGuidanceCallback?.(guidance);
@@ -155,7 +155,7 @@ export class SimulationStream {
       this.currentStep++;
     };
 
-    // Start interval with speed adjustment
+    // Run the simulation at the right speed
     const baseInterval = 100; // 10 Hz base
     this.intervalId = setInterval(tick, baseInterval / this.playbackSpeed);
   }
@@ -164,10 +164,10 @@ export class SimulationStream {
     const gridSize = 64;
     const numDrones = this.config?.numDrones || 3;
     
-    // Get fire origin from config or use default California
+    // Use fire location from config or default to California
     const fireOrigin = this.getFireOrigin();
 
-    // Generate mock fire grid (2D array, base64 encoded JSON)
+    // Simulate fire grid - starts big, gets smaller as drones drop water
     const fireGrid: number[][] = [];
     for (let y = 0; y < gridSize; y++) {
       const row: number[] = [];
@@ -176,12 +176,12 @@ export class SimulationStream {
         const centerY = 32;
         const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
         
-        // Fire starts large and shrinks as drones suppress it (more drones = faster suppression)
-        const suppressionRate = 0.12 * (numDrones / 3); // Scale with drone count
+        // More drones = faster fire suppression
+        const suppressionRate = 0.12 * (numDrones / 3);
         const fireRadius = 18 - t * suppressionRate;
         const intensity = Math.max(0, 1 - (dist / fireRadius));
         
-        // Add noise for realistic fire
+        // Add some randomness so it looks real
         const noise = Math.sin(x * 0.5 + t * 0.1) * Math.cos(y * 0.5 + t * 0.1) * 0.15;
         
         if (dist < fireRadius && intensity > 0) {
@@ -194,18 +194,18 @@ export class SimulationStream {
     }
     const fireBase64 = btoa(JSON.stringify(fireGrid));
 
-    // Generate mock drones using actual fire origin
+    // Position drones around the fire
     const drones: Drone[] = Array.from({ length: numDrones }, (_, i) => ({
       id: i,
       lat: fireOrigin.lat + (Math.sin((t + i * 120) / 10) * 15) / 111,
       lng: fireOrigin.lng + (Math.cos((t + i * 120) / 10) * 15) / (111 * Math.cos((fireOrigin.lat * Math.PI) / 180)),
-      battery: Math.max(0.2, 1 - t / maxSteps),
-      water: Math.max(0, 0.8 - (t / maxSteps) * 1.2),
-      action: ['drop', 'scout', 'idle'][i % 3],
-      heading: ((t * 3 + i * 120) % 360),
+      battery: Math.max(0.2, 1 - t / maxSteps), // Drains over time
+      water: Math.max(0, 0.8 - (t / maxSteps) * 1.2), // Used up
+      action: ['drop', 'scout', 'idle'][i % 3], // Rotate actions
+      heading: ((t * 3 + i * 120) % 360), // Heading direction
     }));
 
-    // Count burning cells
+    // How much of the fire is still burning
     const burningCells = fireGrid.flat().filter(v => v > 0.3).length;
     const totalCells = gridSize * gridSize;
 

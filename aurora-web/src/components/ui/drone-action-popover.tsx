@@ -146,7 +146,7 @@ export function DroneActionPopover({
 }
 
 /**
- * Mock drone action data generator for testing
+ * Generate sample drone actions for display (when there's no real data)
  */
 export function generateMockDroneActions(droneId: string): DroneAction[] {
   const actions: DroneAction[] = [

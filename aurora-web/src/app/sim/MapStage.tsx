@@ -7,7 +7,7 @@ import { FireLayerCanvas } from "./FireLayerCanvas";
 import { DroneLayer } from "./DroneLayer";
 import { PerimeterLayer } from "./PerimeterLayer";
 
-const GOOGLE_MAPS_API_KEY = "[REDACTED_GOOGLE_KEY]";
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "[REDACTED]";
 const LIBRARIES: ("visualization" | "geometry")[] = ["visualization", "geometry"];
 
 const DEFAULT_CENTER = { lat: 36.7783, lng: -119.4179 }; // California

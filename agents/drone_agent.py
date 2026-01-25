@@ -1,22 +1,15 @@
 """
-Enhanced Drone agent implementation for AURORA.
+A drone agent that fights wildfires.
 
-This module defines the :class:`DroneAgent` class used throughout the
-project.  Each drone maintains its own position on the grid, battery
-level, water capacity, and a cooldown timer which prevents the agent
-from suppressing fires on every step.  The agent observes a local
-neighbourhood around itself consisting of the underlying terrain,
-fire state, elevation, and fuel density.  Based on this observation
-it can decide to move in one of the four directions, stay in place
-or attempt to suppress an adjacent burning cell.
+Each drone has:
+- Battery that drains when moving and recharges at bases
+- Water for dropping on fires
+- A cooldown between suppressions (can't spray every single step)
+- Limited visibility around itself
+- Can move up/down/left/right, suppress nearby fire, or scan
 
-Enhanced features:
-- Battery management with recharge zones
-- Water capacity for fire suppression
-- Sensor simulation with limited field of view
-- Communication with other agents
-- More sophisticated reward structures
-- Fault simulation and recovery
+This module handles all the drone logic - movement, resource management,
+and interacting with the fire.
 """
 
 from __future__ import annotations
@@ -32,7 +25,7 @@ except ImportError:
 
 
 class DroneAgent:
-    """Enhanced drone agent operating in the wildfire environment."""
+    """A single drone fighting fire."""
 
     # Action enumeration for clarity
     ACTIONS = {
@@ -53,17 +46,16 @@ class DroneAgent:
                  max_water: float = 50.0,
                  sensor_range: int = 5,
                  communication_range: int = 8) -> None:
-        """Initialise an enhanced drone at the given grid coordinate.
+        """Create a new drone at the given position.
 
         Args:
-            start_pos: (row, column) tuple indicating the starting location.
-            agent_id: Unique identifier for this agent.
-            cooldown_steps: number of steps required between successive
-                suppression actions.  Defaults to 3.
-            max_battery: maximum battery capacity. Defaults to 100.0.
-            max_water: maximum water capacity for suppression. Defaults to 50.0.
-            sensor_range: range of detailed sensor scanning. Defaults to 5.
-            communication_range: range for agent communication. Defaults to 8.
+            start_pos: Where to place the drone (row, col)
+            agent_id: Give this drone a unique ID (random if not set)
+            cooldown_steps: Steps between suppressions (prevents spam)
+            max_battery: How much battery it can hold (default 100)
+            max_water: How much water it can carry (default 50)
+            sensor_range: How far it can see (default 5 cells)
+            communication_range: How far it can talk to other drones
         """
         self.position = list(start_pos)
         self.agent_id = agent_id or f"drone_{random.randint(1000, 9999)}"
@@ -114,27 +106,27 @@ class DroneAgent:
         return (self.water / self.max_water) * 100.0
 
     def is_at_recharge_zone(self, fire_sim: FireSim) -> bool:
-        """Check if drone is at a recharge zone (water or road)."""
+        """Is the drone at a place where it can refill (water or road)?"""
         r, c = self.position
         return fire_sim.terrain[r, c] in [2, 3]  # Road or water
 
     def can_suppress(self) -> bool:
-        """Check if drone can perform fire suppression."""
+        """Can this drone spray water right now?"""
         return (self._cooldown == 0 and 
                 self.water >= self.water_per_suppression and
                 self.battery > 10.0 and  # Need some battery to operate
                 self.is_active)
 
     def observe(self, fire_sim: FireSim) -> np.ndarray:
-        """Return an enhanced observation of the local neighbourhood around the drone.
+        """Look at what's around this drone right now.
 
-        The observation includes:
-        - Channel 0: Terrain type
-        - Channel 1: Fire state  
-        - Channel 2: Elevation (normalized)
-        - Channel 3: Fuel density
-        - Channel 4: Battery level (normalized)
-        - Channel 5: Water level (normalized)
+        Returns a 3x3 grid with 6 channels:
+        - Channel 0: What type of terrain (forest, road, etc.)
+        - Channel 1: Is there fire here?
+        - Channel 2: Elevation
+        - Channel 3: How burnable is this area?
+        - Channel 4: My battery level
+        - Channel 5: My water level
         """
         r, c = self.position
         obs = np.zeros((self.field_of_view, self.field_of_view, 6), dtype=np.float32)
@@ -156,7 +148,7 @@ class DroneAgent:
         return obs
 
     def scan_environment(self, fire_sim: FireSim) -> Dict[str, Any]:
-        """Perform detailed environmental scanning within sensor range."""
+        """Do a detailed scan of what's around this drone."""
         r, c = self.position
         scan_data = {
             'nearby_fires': [],
@@ -191,7 +183,7 @@ class DroneAgent:
         return scan_data
 
     def communicate(self, other_agents: List['DroneAgent'], fire_sim: FireSim) -> List[Dict[str, Any]]:
-        """Communicate with other agents within range."""
+        """Tell other nearby drones what I see."""
         messages = []
         r, c = self.position
         
@@ -221,7 +213,7 @@ class DroneAgent:
         return messages
 
     def _update_resources(self, fire_sim: FireSim) -> None:
-        """Update battery and water levels based on current conditions."""
+        """Drain battery, recharge if at a station, shut down if dead."""
         # Drain battery
         self.battery = max(0.0, self.battery - self.battery_drain_rate)
         
@@ -236,7 +228,7 @@ class DroneAgent:
             self.faults.append('battery_depleted')
 
     def _simulate_faults(self) -> None:
-        """Simulate random faults that can occur during operation."""
+        """Randomly break things and fix them (like real hardware)."""
         # 1% chance per step of developing a fault
         if random.random() < 0.01:
             fault_types = ['sensor_malfunction', 'communication_error', 'suppression_system_fault']
@@ -250,15 +242,15 @@ class DroneAgent:
             self.faults.remove(recovered_fault)
 
     def act(self, action: int, fire_sim: FireSim, other_agents: List['DroneAgent'] = None) -> Dict[str, Any]:
-        """Execute an action and return detailed results.
+        """Do the action and tell me what happened.
 
         Args:
-            action: integer in [0,7] representing the chosen action.
-            fire_sim: the simulation environment on which the agent acts.
-            other_agents: list of other agents for communication.
+            action: A number 0-7 representing what to do
+            fire_sim: The simulation world
+            other_agents: Other drones in the sim (for communication)
 
         Returns:
-            Dictionary containing action results and metrics.
+            Details about what happened (water used, moved, etc.)
         """
         if not self.is_active:
             return {'action': 'inactive', 'suppressed': False, 'message': 'Agent is inactive'}
@@ -334,7 +326,7 @@ class DroneAgent:
         return result
 
     def get_status(self) -> Dict[str, Any]:
-        """Get comprehensive status information about the agent."""
+        """Get a snapshot of this drone right now (battery, position, faults, etc.)."""
         return {
             'agent_id': self.agent_id,
             'position': self.position,
@@ -349,11 +341,10 @@ class DroneAgent:
         }
 
     def reset(self, start_pos: Optional[Tuple[int, int]] = None) -> None:
-        """Reset the drone to a specified position and clear its state.
+        """Start fresh: move the drone back to its starting point and clear everything.
 
         Args:
-            start_pos: optional (row, column) tuple.  If ``None`` the drone
-                remains at its current location.
+            start_pos: Where to put it (optional - stays where it is if not given)
         """
         if start_pos is not None:
             self.position = list(start_pos)

@@ -53,7 +53,7 @@ export function SplitViewComparison({ onClose }: SplitViewComparisonProps = {}) 
             successRateDelta: computed.successRateDelta,
           });
         } else {
-          // Load mock data (in production, this would fetch real runs)
+          // Using fake data for now (real data would come from backend in production)
           const { ppo, hybrid } = generateMockRuns();
           const computed = calculateComparisonMetrics(ppo, hybrid);
           
@@ -102,18 +102,18 @@ export function SplitViewComparison({ onClose }: SplitViewComparisonProps = {}) 
 
   return (
     <div className="flex flex-col h-full bg-gray-950">
-      {/* Delta KPI Banner with Real Metrics */}
-      <div className="bg-gradient-to-r from-purple-900 to-blue-900 border-b border-purple-700 px-6 py-4">
+      {/* Delta KPI Banner - Clean dark design */}
+      <div className="bg-[#0f0f10] border-b border-white/10 px-6 py-4">
         <div className="flex items-center justify-between max-w-full">
           <h3 className="text-white font-bold flex items-center gap-3 text-lg">
-            <ArrowLeftRight className="w-6 h-6" />
+            <ArrowLeftRight className="w-6 h-6 text-purple-400" />
             PPO Baseline vs Hybrid (PPO + LLM) Comparison
           </h3>
 
           {onClose && (
             <button
               onClick={onClose}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg flex items-center gap-1.5 text-sm font-medium transition"
+              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg flex items-center gap-1.5 text-sm font-medium transition"
             >
               <X className="w-4 h-4" />
               Close

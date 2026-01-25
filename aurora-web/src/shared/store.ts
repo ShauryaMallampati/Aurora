@@ -32,7 +32,7 @@ interface SimulationState {
   currentComparisonStep: number;
   
   // UI state
-  selectedTab: 'metrics' | 'telemetry' | 'guidance' | 'charts' | 'logs';
+  selectedTab: 'metrics' | 'telemetry' | 'guidance' | 'charts' | 'costs' | 'logs';
   logs: string[];
   
   // Actions
