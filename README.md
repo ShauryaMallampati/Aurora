@@ -51,17 +51,17 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Verify installation
-python scripts/preflight.py
+python preflight.py
 ```
 
 ### Run a Quick Simulation
 
 ```bash
 # Train for a few steps (10 min)
-python scripts/train_hybrid.py --phase quick
+python train_hybrid.py --phase quick
 
 # Run with trained model
-python scripts/main_enhanced.py
+python main_enhanced.py
 
 # View web dashboard
 cd aurora-web && npm run dev
@@ -83,56 +83,43 @@ cd aurora-web && npm run dev
 
 ```
 AURORA/
-├── README.md                              # This file
-├── LICENSE                               # MIT License
-├── CITATIONS.md                          # All citations & data sources
-├── AURORA_vs_TRADITIONAL_FIREFIGHTING.md # Real-world comparison
-├── requirements.txt                      # Python dependencies
+├── README.md                           # This file
+├── LICENSE                             # MIT License
+├── CITATIONS.md                        # Data sources & citations
+├── requirements.txt                    # Dependencies
 │
-├── docs/                                 # Documentation
-│   ├── ABSTRACT.md                      # Research abstract
-│   ├── ANALYSIS.md                      # Complete analysis & results
-│   └── README.md                        # Doc index
+├── train_hybrid.py                     # Main training script
+├── main_enhanced.py                    # Run simulations
+├── evaluation_battery.py               # Evaluation suite
+├── callbacks.py                        # Training callbacks
+├── preflight.py                        # Setup validation
+├── validate_strict_mode.py             # Data validation
 │
-├── agents/                               # Autonomous agent controllers
+├── agents/                             # Agent controllers
 │   ├── drone_agent.py                  # Individual drone
-│   └── hybrid_ppo_llm_agent.py         # PPO + LLM hybrid agent
+│   └── hybrid_ppo_llm_agent.py         # Hybrid PPO+LLM agent
 │
-├── env/                                  # Fire simulation environment
-│   └── fire_sim.py                     # Fire dynamics engine
-│
-├── data/                                 # Real data integration
-│   ├── real_data_integration_complete.py
-│   ├── fire_perimeter_loader.py
-│   ├── InterAgencyFirePerimeterHistory/  # 116K historical fires
-│   └── weather_cache/                   # NOAA weather data
+├── data/                               # Real data integration
+│   └── real_data_integration_complete.py
 │
 ├── configs/
-│   └── training_phases.yaml            # Training hyperparameters
+│   └── training_phases.yaml            # Training config
 │
-├── results/                              # Generated outputs
-│   ├── models/                         # Trained model weights
-│   ├── checkpoints/                    # Training checkpoints
-│   ├── aurora_complete_evaluation.pdf  # Evaluation plots
-│   └── aurora_metrics.csv              # Metrics data
+├── results/                            # Outputs
+│   ├── models/                         # Trained weights
+│   ├── checkpoints/                    # Checkpoints
+│   └── aurora_metrics.csv              # Metrics
 │
-├── scripts/                              # Core utilities
-│   ├── train_hybrid.py                 # Main training script
-│   ├── main_enhanced.py                # Run simulations
-│   ├── evaluation_battery.py           # Evaluation suite
-│   ├── preflight.py                    # Setup validation
-│   └── validate_strict_mode.py         # Data validation
+├── docs/                               # Documentation
+│   ├── ABSTRACT.md
+│   └── ANALYSIS.md
 │
-├── utils/                                # Visualization utilities
+├── utils/                              # Visualization
 │   ├── visualizer.py
 │   └── 3d_visualizer.py
 │
-├── aurora-web/                           # Next.js web dashboard
-│   ├── src/
-│   ├── package.json
-│   └── README.md
-│
-└── callbacks.py                          # Training callbacks
+└── aurora-web/                         # Web dashboard
+    └── src/
 ```
 
 ---
@@ -141,21 +128,17 @@ AURORA/
 
 ### Hybrid Architecture
 
-The core innovation is combining two AI approaches:
-
 **1. Large Language Model (Qwen 2.5)**
-- Analyzes entire fire state every 50 steps
-- Learns from 116K historical wildfire patterns
-- Provides strategic guidance to drone swarm
-- Recommends priority zones and drone assignments
+- Analyzes fire state every 50 steps
+- Provides strategic guidance to drones
+- Recommends priority zones
 
 **2. Reinforcement Learning (PPO)**
-- Learns continuous control policies
-- Executes drone movement and suppression actions
+- Executes movement and suppression actions
 - Adapts to real-time fire dynamics
 - Improves through episode rewards
 
-**Result**: LLM's strategic reasoning + PPO's learning agility = 21% improvement
+**Result**: LLM strategy + PPO learning = 21% improvement
 
 ---
 
@@ -163,21 +146,21 @@ The core innovation is combining two AI approaches:
 
 ### Quick Training (10-30 min)
 ```bash
-python scripts/train_hybrid.py --phase quick
+python train_hybrid.py --phase quick
 ```
 
 ### Full Training (12 hours on GPU)
 ```bash
-python scripts/train_hybrid.py --phase full
+python train_hybrid.py --phase full
 ```
 
 ### Phased Training
 ```bash
 # Phase A: 2-3 hours
-python scripts/train_hybrid.py --phase phase_a
+python train_hybrid.py --phase phase_a
 
 # Phase B: 3-4 hours
-python scripts/train_hybrid.py --phase phase_b
+python train_hybrid.py --phase phase_b
 
 # Phase C: 4-5 hours
 python scripts/train_hybrid.py --phase phase_c
@@ -194,12 +177,6 @@ python scripts/evaluation_battery.py
 
 ### Generate Analysis
 ```bash
-cd scripts/analysis/
-python verify_21_percent.py          # Verify 21% improvement
-python deep_analysis.py              # Statistical analysis
-python generate_comprehensive_plots.py  # Create visualizations
-```
-
 ### View Results
 - **Plots**: `results/aurora_complete_evaluation.pdf`
 - **Metrics**: `results/aurora_metrics.csv`
@@ -245,7 +222,7 @@ Trained models available in `results/models/`:
 - `ppo_llm_qwen2_5_3b_freq50/` - Hybrid with 3B LLM
 - `ppo_llm_qwen2_5_7b_freq50/` - Hybrid with 7B LLM
 
-Automatically loaded in `scripts/main_enhanced.py`
+Automatically loaded in `main_enhanced.py`
 
 ---
 
@@ -270,71 +247,21 @@ See `requirements.txt` for exact versions.
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for:
-- How to report issues
-- Code style guidelines
-- Testing requirements
-- Pull request process
+See [CITATIONS.md](CITATIONS.md) for issues, contributions, and pull requests.
 
 ---
 
 ## 📜 License
 
-Released under **MIT License**. See [LICENSE](LICENSE) for details.
+MIT License. See [LICENSE](LICENSE).
 
 ---
 
-## 🙏 Citations & Acknowledgments
+## 🙏 Citations
 
-AURORA builds on:
-- **Schulman et al. (2017)** - Proximal Policy Optimization
-- **Wolf et al. (2020)** - Transformers & LLMs
-- **Raffin et al. (2021)** - Stable-Baselines3
-- **USGS, NOAA, Alibaba Qwen team** - Data & models
-
-See [CITATIONS.md](CITATIONS.md) for complete bibliography.
+See [CITATIONS.md](CITATIONS.md) for data sources, libraries, and how to cite.
 
 ---
 
-## 📞 Support
-
-- 📖 **Documentation**: [docs/README.md](docs/README.md)
-- 🐛 **Issues**: GitHub Issues
-- 💬 **Discussions**: GitHub Discussions
-- 🤝 **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
-
----
-
-## 🚀 Next Steps
-
-1. **Install & Run**: Follow Quick Start above
-2. **View Results**: `results/aurora_complete_evaluation.pdf`
-3. **Read Analysis**: `docs/ANALYSIS.md`
-4. **Train Model**: `python scripts/train_hybrid.py --phase quick`
-5. **Contribute**: See [CONTRIBUTING.md](CONTRIBUTING.md)
-
----
-
-**Status**: ✅ Production Ready | ISEF 2025 Competition  
-**Version**: 1.0 | Released: January 25, 2026  
-**License**: MIT
-
----
-
-## Qwen & Hybrid Training
-
-- Qwen LoRA fine-tuning scaffolds: `prepare_qwen_dataset.py`, `train_qwen_wildfire.py`.
-- Hybrid training (PPO + LLM) scaffolds: `train_hybrid.py`, `train_hybrid.sh`.
-- Merged `requirements.txt` includes both RL and LLM dependencies — install into a GPU-enabled environment for full training.
-
----
-
-## Where to find more details
-
-- `validate_strict_mode.py` — a helper script to check presence of required real data files
-- `REAL_DATA_STRICT_MODE.md`, `STRICT_MODE_COMPLETE.md` — more elaborate notes (kept in repo)
-- `QWEN_QUICKSTART.md`, `QWEN_INTEGRATION_PLAN.md` — LLM integration notes
-
----
-
-If you'd like, I can now safely remove the merged documentation files (they were backed up) and update the remaining scripts that still write to `results/` to use `logs/` instead. I will not delete any files until you confirm.
+**ISEF 2025 Competition**  
+**Version**: 1.0 | January 2025

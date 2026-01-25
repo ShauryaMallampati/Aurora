@@ -220,9 +220,3 @@ All dependencies are compatible with the MIT license. Full license texts availab
 - ISEF organizers for competition opportunity
 - All open-source contributors to libraries used
 
----
-
-**Last Updated**: January 25, 2026  
-**Version**: 1.0
-
-Questions about citations? Please open an issue or contact the maintainers.

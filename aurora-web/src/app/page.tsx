@@ -253,10 +253,10 @@ export default function HomePage() {
               <div className="max-w-6xl mx-auto px-6 py-8">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                   {[
-                    { value: "+23%", label: "Area Saved", sublabel: "vs baseline" },
-                    { value: "-18%", label: "Containment Time", sublabel: "faster response" },
-                    { value: "92%", label: "Success Rate", sublabel: "across test fires" },
-                    { value: "116K", label: "Training Scenarios", sublabel: "historical fires" }
+                    { value: "+21%", label: "Return Improvement", sublabel: "Qwen 3B hybrid" },
+                    { value: "53K", label: "Training Episodes", sublabel: "across 4 seeds" },
+                    { value: "+50%", label: "Hard Scenario Gain", sublabel: "where PPO struggles" },
+                    { value: "116K", label: "Real Fire Scenarios", sublabel: "historical data" }
                   ].map((stat, i) => (
                     <div key={i} className="text-center md:text-left">
                       <div className="text-2xl md:text-3xl font-semibold text-white tracking-tight">{stat.value}</div>
@@ -338,34 +338,34 @@ export default function HomePage() {
             <div className="max-w-6xl mx-auto space-y-12">
               <div className="max-w-2xl">
                 <h2 className="text-3xl font-semibold tracking-tight">Performance Results</h2>
-                <p className="text-white/50 mt-2">Measured improvements over PPO-only baseline across 25 evaluation episodes on 5 real historical fires.</p>
+                <p className="text-white/50 mt-2">Real metrics from 53,055 training episodes across 3 models and 4 random seeds.</p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
                 {[
                   {
                     icon: TrendingUp,
-                    value: "+23.4%",
-                    label: "More Area Saved",
-                    description: "Strategically prioritizes high-risk zones, saving significantly more terrain from fire damage"
+                    value: "+21.0%",
+                    label: "Episode Return Improvement",
+                    description: "Hybrid model achieves 41.84 vs 34.57 baseline return, trained on 116,337 historical fires"
                   },
                   {
                     icon: Zap,
-                    value: "-18.2%",
-                    label: "Faster Containment",
-                    description: "Reduces time to full fire containment, preventing spread to populated areas"
+                    value: "+49.9%",
+                    label: "Hard Scenario Improvement",
+                    description: "LLM guidance shows strongest gains on difficult fire configurations where PPO alone struggles"
                   },
                   {
                     icon: Shield,
-                    value: "+15.7%",
-                    label: "Water Efficiency",
-                    description: "Optimizes suppression resources, achieving superior containment with less water"
+                    value: "53,055",
+                    label: "Training Episodes",
+                    description: "Validated across 4 random seeds with PPO baseline, Qwen 3B, and Qwen 7B hybrid models"
                   },
                   {
                     icon: Award,
-                    value: "92%",
-                    label: "Success Rate",
-                    description: "Achieves successful containment in 92% of diverse scenarios"
+                    value: "116K",
+                    label: "Historical Fires",
+                    description: "Trained exclusively on real InterAgency Fire Perimeter data from 1308-2024"
                   }
                 ].map((result, i) => (
                   <div key={i} className="p-6 rounded-xl bg-white/[0.02] border border-white/5">
@@ -442,15 +442,15 @@ export default function HomePage() {
 
               <div className="p-6 rounded-xl bg-white/[0.02] border border-white/5">
                 <h3 className="text-lg font-medium mb-4">Evaluation Protocol</h3>
-                <p className="text-[13px] text-white/50 mb-4">LLM guidance is encoded into PPO observation space as priority channels. Results in 23% improvement with full explainability.</p>
+                <p className="text-[13px] text-white/50 mb-4">LLM guidance encoded into PPO observation space as priority channels. Results in 21% improvement with +50% gains on hard scenarios.</p>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="p-4 rounded-lg bg-white/[0.02]">
-                    <div className="text-sm font-medium text-orange-400 mb-1">5 Test Fires</div>
-                    <p className="text-xs text-white/40">Camp Fire CA, Riverside OR, East Troublesome CO, Okanogan WA, Lolo Peak MT</p>
+                    <div className="text-sm font-medium text-orange-400 mb-1">53,055 Episodes</div>
+                    <p className="text-xs text-white/40">3 models × 4 seeds: PPO baseline, Qwen 3B hybrid, Qwen 7B hybrid</p>
                   </div>
                   <div className="p-4 rounded-lg bg-white/[0.02]">
-                    <div className="text-sm font-medium text-orange-400 mb-1">25 Evaluation Episodes</div>
-                    <p className="text-xs text-white/40">5 fires × 5 random seeds for reproducible test set</p>
+                    <div className="text-sm font-medium text-orange-400 mb-1">Real Historical Data</div>
+                    <p className="text-xs text-white/40">116,337 fires from InterAgency + NOAA weather + USGS terrain</p>
                   </div>
                 </div>
               </div>
