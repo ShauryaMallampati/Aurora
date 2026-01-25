@@ -271,7 +271,7 @@ export function PerformanceDashboard() {
                 borderRadius: '8px',
                 color: '#fff',
               }}
-              formatter={(value: number) => (value as number).toFixed(0)}
+              formatter={(value) => value != null ? Number(value).toFixed(0) : '0'}
             />
             <Legend wrapperStyle={{ fontSize: '12px' }} />
             {(filterModel === 'all' || filterModel === 'ppo') && (
@@ -386,7 +386,7 @@ export function PerformanceDashboard() {
                 color: '#fff',
               }}
               cursor={{ strokeDasharray: '3 3' }}
-              formatter={(value: number) => [`${(value as number).toFixed(1)}ms`, 'Latency']}
+              formatter={(value) => [`${value != null ? Number(value).toFixed(1) : '0'}ms`, 'Latency']}
             />
             {(filterModel === 'all' || filterModel === 'ppo') && (
               <Scatter

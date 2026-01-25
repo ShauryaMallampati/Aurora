@@ -300,7 +300,7 @@ function loadMetricsFromDisk(resultsPath: string): TrainingMetrics[] {
 }
 
 // Mock data generator for development/testing
-export function generateMockExperimentMetrics(): TrainingMetrics[] {
+function generateMockExperimentMetrics(): TrainingMetrics[] {
   const metrics: TrainingMetrics[] = [];
   let episodeReturn = 10;
   let completionRate = 0.2;
