@@ -22,7 +22,7 @@ import sys
 import os
 from pathlib import Path as _Path
 
-# Base directory (script location) so paths work regardless of working directory
+# Setup paths
 _BASE_DIR = _Path(__file__).parent.resolve()
 sys.path.append(str(_BASE_DIR / 'data'))
 sys.path.append(str(_BASE_DIR / 'agents'))
@@ -432,20 +432,20 @@ def make_env(rank: int, llm_model: str, llm_freq: int, hf_token: str, llm_backen
 def main():
     parser = argparse.ArgumentParser(description='Train Hybrid PPO + Llama-2 on real fire data - ISEF 2025')
     
-    # === PHASE SELECTION (ISEF-optimized) ===
+    # Phase configuration
     parser.add_argument('--phase', type=str, default='full', 
                        choices=['phase_a', 'phase_b', 'phase_c', 'full', 'quick', 'test'],
                        help='Training phase: phase_a (50K), phase_b (150K), phase_c (200K), full (400K), quick (50K), or test (10K debug)')
     
-    # === MANUAL OVERRIDE (if not using phases) ===
+    # Manual timestep override
     parser.add_argument('--timesteps', type=int, default=None, 
                        help='Total training timesteps (overrides phase setting)')
     
-    # === ENVIRONMENT SETTINGS ===
+    # Environment
     parser.add_argument('--n_envs', type=int, default=2, 
                        help='Number of parallel environments (2 recommended, 4096 steps/update)')
     
-    # === LLM SETTINGS ===
+    # LLM configuration
     parser.add_argument('--llm_model', type=str, default='Qwen/Qwen2.5-1.5B-Instruct',
                        help='HuggingFace LLM model ID (Qwen recommended for ISEF)')
     parser.add_argument('--llm_freq', type=int, default=500,
@@ -455,7 +455,7 @@ def main():
     parser.add_argument('--llm_backend', type=str, default='transformers',
                        help='LLM backend to use: transformers (preferred)')
     
-    # === CHECKPOINTING & EVALUATION ===
+    # Checkpointing & evaluation
     parser.add_argument('--save_freq', type=int, default=40960,
                        help='Save model every N steps (default: every 5 updates = 40960 steps)')
     parser.add_argument('--eval_freq', type=int, default=81920,
@@ -465,11 +465,11 @@ def main():
     parser.add_argument('--resume', action='store_true', default=False,
                        help='Auto-resume from latest checkpoint without prompting (y)')
     
-    # === OTHER ===
+    # Other options
     parser.add_argument('--verbose', type=int, default=1,
                        help='Verbosity level')
 
-    # === BASELINE/EXPERIMENTAL ===
+    # Experimental flags
     parser.add_argument('--seed', type=int, default=None,
                         help='Random seed for reproducibility (optional)')
     parser.add_argument('--output_dir', type=str, default=None,
@@ -477,7 +477,7 @@ def main():
     
     args = parser.parse_args()
     
-    # === PHASE CONFIGURATION ===
+    # Load phase config
     phase_configs = {
         'phase_a': {'steps': 57_344, 'name': 'Phase A: Sanity & Overfit (~50K)'},
         'phase_b': {'steps': 147_456, 'name': 'Phase B: Curriculum (~150K)'},
@@ -487,7 +487,7 @@ def main():
         'test': {'steps': 10_000, 'name': 'Debug Test (10K)'}
     }
 
-    # === SET RANDOM SEED IF PROVIDED ===
+    # Set random seed
     if args.seed is not None:
         import random
         import torch
@@ -497,7 +497,7 @@ def main():
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(args.seed)
     
-    # Determine timesteps
+    # Calculate total timesteps
     if args.timesteps:
         total_timesteps = args.timesteps
         phase_name = f'Custom ({args.timesteps:,} steps)'
@@ -508,7 +508,7 @@ def main():
     
     args.timesteps = total_timesteps
     
-    # Get HF token from args or env
+    # Get HuggingFace token
     hf_token = args.hf_token or os.getenv("HF_TOKEN")
     if not hf_token:
         print("⚠️  WARNING: No HuggingFace token provided!")
@@ -535,14 +535,14 @@ def main():
     print("\n📊 Real Fire Data: 116,337 fires from InterAgency Fire Perimeter History")
     print("="*80 + "\n")
     
-    # Create vectorized environments
+    # Setup parallel environments
     print(f"Creating {args.n_envs} parallel hybrid environments...")
     print(f"(Each environment will use {args.llm_model} for strategic guidance)")
     
-    # Disable tokenizer parallelism to avoid fork warnings
+    # Prevent tokenizer fork warnings
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
     
-    # For multi-env: prefer transformers but avoid heavy model loads in subprocesses
+    # Use main process for LLM
     worker_backend = args.llm_backend
     if args.n_envs > 1 and args.llm_backend == 'transformers':
         # Use heuristic/transformers mix — avoid loading full model in each worker by
@@ -556,14 +556,14 @@ def main():
     
     print("✅ Environments created\n")
     
-    # Check for existing checkpoints (resume capability)
+    # Check for existing checkpoints
     checkpoint_dir = _Path("./results/checkpoints/")
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     
-    # Find latest checkpoint (look for .zip files, sort numerically)
+    # Find latest checkpoint
     checkpoints = list(checkpoint_dir.glob("checkpoint_step_*.zip"))
     
-    # Sort by step number (extract number from filename and sort numerically)
+    # Sort by step number
     def get_step_num(cp):
         try:
             return int(cp.stem.split("_")[-1])
@@ -600,7 +600,7 @@ def main():
             print(f"⚠️  Could not parse checkpoint name: {latest_checkpoint}")
             latest_checkpoint = None
     
-    # Create or load PPO model
+    # Setup PPO model
     if latest_checkpoint and resume_step > 0:
         print(f"Loading model from checkpoint: {latest_checkpoint}")
         model = PPO.load(str(latest_checkpoint), env=env)
@@ -627,8 +627,7 @@ def main():
         )
         print("✅ Model initialized\n")
     
-    # Create callback with real-time progress and checkpointing
-    # Note: hybrid_agent will be accessed through env, stats collected separately
+    # Setup training callback
     callback = TrainingCallback(
         check_freq=args.progress_freq,           # Print progress every N steps (real-time)
         save_freq=args.save_freq,                # Save checkpoint every N steps (from CLI)
