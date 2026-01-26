@@ -5,6 +5,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // Fake run data - would load actual results in production
 const MOCK_RUNS = {
   ppo: {

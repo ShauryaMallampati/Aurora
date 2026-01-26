@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // Real metrics from trained models (53,055 episodes across 3 models × 4 seeds)
 const REAL_METRICS = {
   ppo_baseline: {
