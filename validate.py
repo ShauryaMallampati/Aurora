@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-"""
-Strict Mode Validator.
-Ensures we aren't faking it.
-Checks: Files, CRS, USGS API, NOAA weather, and Scenario generation.
-"""
+\"\"\"
+Validate real data sources: fire perimeters, NOAA weather, USGS elevation.
+\"\"\"
 
 import sys
 from pathlib import Path

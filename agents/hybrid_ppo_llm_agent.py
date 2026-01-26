@@ -1,7 +1,6 @@
 """
-The Big Brain.
-This agent uses an LLM (Qwen/Llama) to tell the PPO drones where to go.
-Strategy happens every N steps.
+Hybrid PPO + LLM agent for wildfire suppression.
+The LLM provides high-level strategy, PPO handles the tactics.
 """
 
 import numpy as np
@@ -20,7 +19,7 @@ except ImportError:
 
 
 class HybridPPOLLMAgent:
-    """Combines the strategic LLM with the tactical PPO."""
+    """LLM-guided strategic layer for PPO drone control."""
     
     def __init__(self,
                  llm_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
@@ -29,14 +28,13 @@ class HybridPPOLLMAgent:
                  hf_token: Optional[str] = None,
                  llm_backend: str = "transformers",
                  device: str = "auto"):
-        """Set up the hybrid agent with an LLM backbone.
-        
+        """
         Args:
-            llm_model: Model to load from HuggingFace (default: Qwen 1.5B chat)
-            llm_guidance_frequency: How often to ask the LLM for advice (in steps)
-            temperature: How creative the LLM should be (0.7 = medium)
-            hf_token: HuggingFace token if you're using gated models
-            device: Where to run the model ("cuda", "cpu", or auto-detect)
+            llm_model: HuggingFace model ID
+            llm_guidance_frequency: Steps between LLM calls
+            temperature: Sampling temperature (0.7 default)
+            hf_token: HF token for gated models (or set HF_TOKEN env var)
+            device: cuda/cpu/auto
         """
         self.llm_model = llm_model
         self.llm_guidance_frequency = llm_guidance_frequency
@@ -145,21 +143,9 @@ class HybridPPOLLMAgent:
                               drone_states: List[Dict],
                               weather: Dict,
                               step: int) -> Dict[str, Any]:
-        """Ask the LLM where to focus next.
+        """Get LLM guidance on where drones should focus.
         
-        Args:
-            fire_state: 2D grid showing fire (0=safe, 1=burning, 2=burnt out)
-            drone_positions: Where each drone is right now
-            drone_states: Battery and water levels for each drone
-            weather: Temp, wind direction/speed, humidity
-            step: Which step of the sim we're at
-            
-        Returns:
-            A strategy dict with:
-            - priority_zones: Which fire clusters to hit first
-            - drone_assignments: Which drone handles which cluster
-            - resource_strategy: Whether to be aggressive or conservative
-            - reasoning: What the LLM was thinking
+        Returns dict with priority_zones, drone_assignments, resource_strategy.
         """
         
         if not self.pipe:
@@ -291,7 +277,7 @@ Focus on:
     # them via plugin interfaces. This keeps API keys out of source.
     
     def _fallback_strategy(self, fire_state, drone_positions, drone_states) -> Dict:
-        """When LLM isn't available, use simple rules instead."""
+        """Heuristic fallback when LLM is unavailable."""
         
         hotspots = self._find_fire_hotspots(fire_state)
         
@@ -317,7 +303,7 @@ Focus on:
         }
     
     def _find_fire_hotspots(self, fire_state: np.ndarray, min_size: int = 5) -> List[Dict]:
-        """Find where the fire clusters are."""
+        """Find connected fire clusters."""
         from scipy import ndimage
         
         # Label connected burning regions
@@ -347,7 +333,7 @@ Focus on:
         return hotspots
     
     def _get_bbox(self, mask: np.ndarray) -> List[int]:
-        """Get the box around this fire cluster."""
+        """Get bounding box for a fire cluster."""
         coords = np.argwhere(mask)
         if len(coords) == 0:
             return [0, 0, 0, 0]
@@ -378,7 +364,7 @@ Focus on:
         return "\n".join(lines)
     
     def should_request_guidance(self, step: int) -> bool:
-        """Time to ask the LLM what to do next?"""
+        """Check if it's time for an LLM call."""
         self.steps_since_guidance += 1
         
         if self.steps_since_guidance >= self.llm_guidance_frequency:
@@ -387,7 +373,7 @@ Focus on:
         return False
     
     def get_statistics(self) -> Dict[str, Any]:
-        """How many times did the LLM get called? How many tokens used?"""
+        """Return LLM usage stats."""
         return {
             'llm_calls': self.llm_calls,
             'llm_tokens_used': self.llm_tokens_used,

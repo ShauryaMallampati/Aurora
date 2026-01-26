@@ -1,6 +1,5 @@
 """
-Training callbacks.
-Track progress, save checkpoints, log stats.
+Training callbacks for progress tracking and checkpointing.
 """
 
 import numpy as np
@@ -23,13 +22,7 @@ except ImportError:
 
 
 class AuroraTrainingCallback(BaseCallback):
-    """
-    Enhanced training callback with:
-    - Progress tracking with ETA
-    - Periodic evaluation on held-out battery
-    - Checkpoint saving with metadata
-    - Metric logging to CSV
-    """
+    """Callback with progress tracking, periodic evaluation, and checkpoint saving."""
     
     def __init__(self, 
                  mode: str = 'ppo',

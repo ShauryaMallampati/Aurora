@@ -1,6 +1,5 @@
 """
-A drone agent that fights wildfires.
-Has battery, water, and a mission.
+Drone agent for wildfire suppression.
 """
 
 from __future__ import annotations
@@ -16,7 +15,7 @@ except ImportError:
 
 
 class DroneAgent:
-    """A single drone fighting fire."""
+    """Individual drone with battery, water, sensors, and movement."""
 
     ACTIONS = {
         0: "stay",
@@ -36,17 +35,7 @@ class DroneAgent:
                  max_water: float = 50.0,
                  sensor_range: int = 5,
                  communication_range: int = 8) -> None:
-        """Create a new drone at the given position.
-
-        Args:
-            start_pos: Where to place the drone (row, col)
-            agent_id: Give this drone a unique ID (random if not set)
-            cooldown_steps: Steps between suppressions (prevents spam)
-            max_battery: How much battery it can hold (default 100)
-            max_water: How much water it can carry (default 50)
-            sensor_range: How far it can see (default 5 cells)
-            communication_range: How far it can talk to other drones
-        """
+        """Initialize drone at given position."""
         self.position = list(start_pos)
         self.agent_id = agent_id or f"drone_{random.randint(1000, 9999)}"
         self.cooldown_steps = cooldown_steps
@@ -82,7 +71,7 @@ class DroneAgent:
 
     @property
     def cooldown(self) -> int:
-        """Return the number of remaining cooldown steps before the drone can suppress again."""
+        """Remaining cooldown steps before next suppression."""
         return self._cooldown
 
     @property
@@ -96,28 +85,19 @@ class DroneAgent:
         return (self.water / self.max_water) * 100.0
 
     def is_at_recharge_zone(self, fire_sim: FireSim) -> bool:
-        """Is the drone at a place where it can refill (water or road)?"""
+        """Check if drone is at a refill location (road or water)."""
         r, c = self.position
         return fire_sim.terrain[r, c] in [2, 3]  # Road or water
 
     def can_suppress(self) -> bool:
-        """Can this drone spray water right now?"""
+        """Check if drone can perform suppression action."""
         return (self._cooldown == 0 and 
                 self.water >= self.water_per_suppression and
                 self.battery > 10.0 and  # Need some battery to operate
                 self.is_active)
 
     def observe(self, fire_sim: FireSim) -> np.ndarray:
-        """Look at what's around this drone right now.
-
-        Returns a 3x3 grid with 6 channels:
-        - Channel 0: What type of terrain (forest, road, etc.)
-        - Channel 1: Is there fire here?
-        - Channel 2: Elevation
-        - Channel 3: How burnable is this area?
-        - Channel 4: My battery level
-        - Channel 5: My water level
-        """
+        """Get 3x3 observation grid with terrain, fire, and drone state."""
         r, c = self.position
         obs = np.zeros((self.field_of_view, self.field_of_view, 6), dtype=np.float32)
         
@@ -138,7 +118,7 @@ class DroneAgent:
         return obs
 
     def scan_environment(self, fire_sim: FireSim) -> Dict[str, Any]:
-        """Do a detailed scan of what's around this drone."""
+        """Detailed scan of fires, recharge zones, and weather nearby."""
         r, c = self.position
         scan_data = {
             'nearby_fires': [],
@@ -173,7 +153,7 @@ class DroneAgent:
         return scan_data
 
     def communicate(self, other_agents: List['DroneAgent'], fire_sim: FireSim) -> List[Dict[str, Any]]:
-        """Tell other nearby drones what I see."""
+        """Share position and scan data with nearby drones."""
         messages = []
         r, c = self.position
         
@@ -203,7 +183,7 @@ class DroneAgent:
         return messages
 
     def _update_resources(self, fire_sim: FireSim) -> None:
-        """Drain battery, recharge if at a station, shut down if dead."""
+        """Update battery/water and handle depletion."""
         # Drain battery
         self.battery = max(0.0, self.battery - self.battery_drain_rate)
         
@@ -218,7 +198,7 @@ class DroneAgent:
             self.faults.append('battery_depleted')
 
     def _simulate_faults(self) -> None:
-        """Randomly break things and fix them (like real hardware)."""
+        """Random fault simulation for realism."""
         # 1% chance per step of developing a fault
         if random.random() < 0.01:
             fault_types = ['sensor_malfunction', 'communication_error', 'suppression_system_fault']
@@ -232,16 +212,7 @@ class DroneAgent:
             self.faults.remove(recovered_fault)
 
     def act(self, action: int, fire_sim: FireSim, other_agents: List['DroneAgent'] = None) -> Dict[str, Any]:
-        """Do the action and tell me what happened.
-
-        Args:
-            action: A number 0-7 representing what to do
-            fire_sim: The simulation world
-            other_agents: Other drones in the sim (for communication)
-
-        Returns:
-            Details about what happened (water used, moved, etc.)
-        """
+        """Execute action and return result dict."""
         if not self.is_active:
             return {'action': 'inactive', 'suppressed': False, 'message': 'Agent is inactive'}
         
@@ -316,7 +287,7 @@ class DroneAgent:
         return result
 
     def get_status(self) -> Dict[str, Any]:
-        """Get a snapshot of this drone right now (battery, position, faults, etc.)."""
+        """Get current drone state snapshot."""
         return {
             'agent_id': self.agent_id,
             'position': self.position,
@@ -331,11 +302,7 @@ class DroneAgent:
         }
 
     def reset(self, start_pos: Optional[Tuple[int, int]] = None) -> None:
-        """Start fresh: move the drone back to its starting point and clear everything.
-
-        Args:
-            start_pos: Where to put it (optional - stays where it is if not given)
-        """
+        """Reset drone to initial state."""
         if start_pos is not None:
             self.position = list(start_pos)
         

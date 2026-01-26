@@ -1,8 +1,5 @@
 """
-AURORA: Hybrid PPO + LLM Training
-
-We smash PPO (low-level drone control) and LLMs (high-level strategy) together.
-Trained on 116K real fires. If the data isn't real, we don't want it.
+Hybrid PPO + LLM training on real fire data.
 """
 
 import sys
@@ -37,10 +34,7 @@ from agents.hybrid_ppo_llm_agent import HybridPPOLLMAgent
 
 
 class HybridRealFireEnv(gym.Env):
-    """
-    The main gym environment. 
-    It loads real fire data, simulates the burn, and lets the drones fight it.
-    """
+    """Gym environment for drone wildfire suppression with optional LLM guidance."""
     
     def __init__(self, 
                  grid_size: int = 50,
@@ -175,7 +169,7 @@ class HybridRealFireEnv(gym.Env):
         }
     
     def _update_strategy(self):
-        """Get strategic guidance from LLM (or skip if LLM disabled)."""
+        """Request LLM guidance if enabled and due."""
         if self.hybrid_agent is None:
             # LLM disabled for pure PPO baseline
             self.current_strategy = None
@@ -225,7 +219,7 @@ class HybridRealFireEnv(gym.Env):
         return obs, reward, terminated, truncated, {}
     
     def _get_observation(self, drone_id: int) -> np.ndarray:
-        """Get observation for a drone (3x3 grid with strategic overlay)."""
+        """Build observation tensor for a drone."""
         
         drone = self.drones[drone_id]
         x, y = drone.position
@@ -274,7 +268,7 @@ class HybridRealFireEnv(gym.Env):
         return obs
     
     def _calculate_reward(self) -> float:
-        """Calculate reward with strategic alignment bonus."""
+        """Compute reward based on fire suppression and strategic alignment."""
         
         # Base fire suppression reward
         burning_cells = np.sum(self.fire_sim.fire_state == 1)
@@ -311,7 +305,7 @@ class HybridRealFireEnv(gym.Env):
 
 
 class TrainingCallback(BaseCallback):
-    """Custom callback with real-time progress, checkpointing, and LLM statistics."""
+    """Training callback with progress tracking and checkpointing."""
     
     def __init__(self, check_freq: int = 100, save_freq: int = 500, 
                  total_timesteps: int = 50000, 
@@ -387,7 +381,7 @@ class TrainingCallback(BaseCallback):
 
 
 def make_env(rank: int, llm_model: str, llm_freq: int, hf_token: str, llm_backend: str = 'transformers'):
-    """Create a single hybrid environment instance."""
+    """Factory for creating hybrid environments."""
     def _init():
         # Load integrator in each subprocess
         integrator = RealDataIntegrator()

@@ -70,6 +70,35 @@ cd aurora-web && npm run dev
 
 ---
 
+## Setup / API Keys
+
+You'll need a few API keys to run everything. Create these files and add your keys:
+
+### Python Backend (`/.env` or export in terminal)
+
+```bash
+# Hugging Face - needed for the LLM (Qwen model)
+# Get one at: https://huggingface.co/settings/tokens
+export HF_TOKEN=hf_your_token_here
+```
+
+### Web Dashboard (`/aurora-web/.env.local`)
+
+```bash
+# Google Maps - for the map visualization
+# Get one at: https://console.cloud.google.com/apis/credentials
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_key
+
+# Supabase - for run history (optional, app works without it)
+# Get these at: https://supabase.com/dashboard
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+```
+
+**Note:** The `.env` files are gitignored so your keys stay private.
+
+---
+
 ## Documentation
 
 - **[docs/ABSTRACT.md](docs/ABSTRACT.md)** - Research abstract (250 words)

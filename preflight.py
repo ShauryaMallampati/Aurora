@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""
-Pre-flight checks.
-Runs before takeoff to verify deps and data.
-"""
+\"\"\"
+Pre-flight checks: verify dependencies, data files, and modules.
+\"\"\"
 
 import sys
 from pathlib import Path

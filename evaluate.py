@@ -1,7 +1,5 @@
 """
-The ultimate test.
-5 historical fires, 5 seeds. 25 episodes total.
-If the model can beat these, it's ready.
+Evaluation battery: 5 historical fires × 5 seeds = 25 episodes.
 """
 
 # The Gauntlet: 5 Representative Historical Fires.
