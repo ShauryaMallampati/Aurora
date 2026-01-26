@@ -1,6 +1,7 @@
 #!/bin/zsh
 
-# Master script for AURORA ISEF 2025 - Phased training support
+# Master Control.
+# Train, validate, run.
 
 usage() {
     echo "Usage: $0 {setup|train|validate|run} [options]"

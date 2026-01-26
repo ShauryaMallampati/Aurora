@@ -1,14 +1,7 @@
 #!/usr/bin/env python3
 """
-AURORA Pre-Flight Check - Quick Validation
-
-Run this before training to ensure everything is set up correctly.
-
-Usage:
-    python preflight.py
-
-Author: Shaurya Mallampati
-Date: October 16, 2025
+Pre-flight checks.
+Runs before takeoff to verify deps and data.
 """
 
 import sys

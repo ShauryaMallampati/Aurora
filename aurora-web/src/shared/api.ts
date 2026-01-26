@@ -1,4 +1,4 @@
-// API client for AURORA backend
+// Backend API client.
 
 import type {
   SimulationConfig,

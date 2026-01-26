@@ -1,19 +1,12 @@
 """
-Enhanced visualization utilities for AURORA.
-
-This module contains functions to render the current state of the
-simulation with enhanced features including:
-- Battery and water level indicators
-- Fault status display
-- Communication links between agents
-- Weather information overlay
-- Enhanced color coding for terrain and fire states
+Visualization stuff.
+Draws the fire, drones, and stats.
 """
 
 from __future__ import annotations
 
 import matplotlib
-matplotlib.use("Agg")  # Use a non‑interactive backend for file output
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import Iterable, Optional, List
@@ -29,15 +22,9 @@ except ImportError:
 
 def render(sim: FireSim, drones: Iterable[DroneAgent] = (), step: Optional[int] = None,
            save_path: Optional[str] = None, show_weather: bool = True) -> None:
-    """Render the enhanced simulation state using Matplotlib.
-
-    Args:
-        sim: the :class:`FireSim` instance to visualise
-        drones: an iterable of :class:`DroneAgent` objects to overlay on the map
-        step: optional timestep index to include in the plot title
-        save_path: optional file path.  If provided, the figure is saved
-            to this path.  Otherwise ``plt.show()`` is called.
-        show_weather: whether to display weather information overlay
+    """
+    Draws the map state.
+    Red fuel, Green trees, Blue water, you get it.
     """
     terrain = sim.terrain
     fire = sim.fire_state

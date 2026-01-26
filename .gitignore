@@ -24,7 +24,7 @@ MANIFEST
 # Virtual environments
 .env
 .venv
-env/
+# env/  <-- Commented out because we have a folder named 'env' for source code
 venv/
 ENV/
 env.bak/

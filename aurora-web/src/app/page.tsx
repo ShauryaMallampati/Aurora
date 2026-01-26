@@ -48,6 +48,7 @@ export default function HomePage() {
           </Link>
           <nav className="hidden md:flex items-center gap-8">
             <Link href="/sim" className="text-[13px] text-white/60 hover:text-white transition-colors">Mission Control</Link>
+            <Link href="/costs" className="text-[13px] text-white/60 hover:text-white transition-colors">Cost Analysis</Link>
             <Link href="/scenarios" className="text-[13px] text-white/60 hover:text-white transition-colors">Scenarios</Link>
             <Link href="/lab" className="text-[13px] text-white/60 hover:text-white transition-colors">Lab</Link>
             <Link href="/runs" className="text-[13px] text-white/60 hover:text-white transition-colors">History</Link>
@@ -564,7 +565,7 @@ export default function HomePage() {
             <span className="text-xs text-white/30 ml-2">Autonomous Unified Response Orchestration</span>
           </div>
           <div className="text-xs text-white/40">
-            Shaurya Mallampati & Ankit Mohanty · ISEF 2025
+            AURORA Team · ISEF 2025
           </div>
         </div>
       </footer>

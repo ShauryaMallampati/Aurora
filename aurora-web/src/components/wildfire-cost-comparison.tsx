@@ -115,55 +115,55 @@ export function WildfireCostComparison() {
 
       {/* Key Metrics Cards */}
       {savings && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           {/* Cost Savings */}
-          <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 border border-green-500/30 rounded-lg p-4">
+          <div className="bg-[#1f2937] border border-gray-700 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
-              <DollarSign className="w-5 h-5 text-green-400" />
-              <span className="text-xs font-semibold text-gray-400">COST SAVINGS</span>
+              <span className="text-xl">💰</span>
+              <span className="text-xs font-semibold text-gray-300">COST SAVINGS</span>
             </div>
-            <p className="text-3xl font-bold text-green-400">
+            <p className="text-2xl font-bold text-white break-words">
               ${(savings.totalSavings / 1000).toFixed(1)}K
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-[10px] text-gray-400 mt-1 leading-tight">
               Per 1000-acre fire ({savings.costReduction}% reduction)
             </p>
           </div>
 
           {/* Response Time */}
-          <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-lg p-4">
+          <div className="bg-[#1f2937] border border-gray-700 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Clock className="w-5 h-5 text-blue-400" />
-              <span className="text-xs font-semibold text-gray-400">RESPONSE TIME</span>
+              <span className="text-xl">⚡</span>
+              <span className="text-xs font-semibold text-gray-300">RESPONSE TIME</span>
             </div>
-            <p className="text-3xl font-bold text-blue-400">{savings.timeSavings}x Faster</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-2xl font-bold text-white break-words">{savings.timeSavings}x Faster</p>
+            <p className="text-[10px] text-gray-400 mt-1 leading-tight">
               {costComparison!.traditional.time} → {costComparison!.aurora.time} min
             </p>
           </div>
 
           {/* Acres Protected */}
-          <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/10 border border-orange-500/30 rounded-lg p-4">
+          <div className="bg-[#1f2937] border border-gray-700 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Zap className="w-5 h-5 text-orange-400" />
-              <span className="text-xs font-semibold text-gray-400">ACRES PROTECTED</span>
+              <span className="text-xl">🌲</span>
+              <span className="text-xs font-semibold text-gray-300">ACRES PROTECTED</span>
             </div>
-            <p className="text-3xl font-bold text-orange-400">+{savings.acresExtra}</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-2xl font-bold text-white break-words">+{savings.acresExtra}</p>
+            <p className="text-[10px] text-gray-400 mt-1 leading-tight">
               Additional containment per 1000-acre fire
             </p>
           </div>
 
           {/* Cost Per Acre */}
-          <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/30 rounded-lg p-4">
+          <div className="bg-[#1f2937] border border-gray-700 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
-              <TrendingDown className="w-5 h-5 text-purple-400" />
-              <span className="text-xs font-semibold text-gray-400">COST PER ACRE</span>
+              <span className="text-xl">📉</span>
+              <span className="text-xs font-semibold text-gray-300">COST PER ACRE</span>
             </div>
-            <p className="text-3xl font-bold text-purple-400">
+            <p className="text-2xl font-bold text-white break-words">
               ${costComparison!.aurora.costPerAcre.toLocaleString()}
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-[10px] text-gray-400 mt-1 leading-tight">
               vs ${costComparison!.traditional.costPerAcre.toLocaleString()} traditional
             </p>
           </div>
@@ -324,22 +324,22 @@ export function WildfireCostComparison() {
       )}
 
       {/* Scaling Impact */}
-      <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-500/20 rounded-lg p-6">
+      <div className="bg-[#1f2937] border border-gray-700 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-white mb-4">National Scaling Impact</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
-            <p className="text-gray-400 mb-2">Annual Federal Suppression Cost (Avg)</p>
+            <p className="text-gray-300 mb-2">Annual Federal Suppression Cost (Avg)</p>
             <p className="text-2xl font-bold text-white">$2.99B</p>
             <p className="text-xs text-gray-500 mt-1">5-year average (2019-2023)</p>
           </div>
           <div>
-            <p className="text-gray-400 mb-2">Potential Annual Savings (42% reduction)</p>
-            <p className="text-2xl font-bold text-green-400">$1.26B</p>
+            <p className="text-gray-300 mb-2">Potential Annual Savings (42% reduction)</p>
+            <p className="text-2xl font-bold text-white">$1.26B</p>
             <p className="text-xs text-gray-500 mt-1">If AURORA deployed nationwide</p>
           </div>
           <div>
-            <p className="text-gray-400 mb-2">Lives Protected (Indirect)</p>
-            <p className="text-2xl font-bold text-orange-400">~2,400</p>
+            <p className="text-gray-300 mb-2">Lives Protected (Indirect)</p>
+            <p className="text-2xl font-bold text-white">~2,400</p>
             <p className="text-xs text-gray-500 mt-1">
               Based on wildfire casualties reduction at faster response
             </p>

@@ -1,27 +1,7 @@
 """
-Hybrid PPO + LLM Agent for AURORA
-
-This agent combines:
-1. PPO (Proximal Policy Optimization) for low-level action execution
-2. LLM (GPT-4o-mini or LLaMA) for high-level strategic guidance
-
-The LLM provides strategic decisions every N steps:
-- Which area of the fire to prioritize
-- Resource allocation across drones
-- When to retreat/recharge vs. continue suppression
-
-PPO handles the low-level actions:
-- Movement (up/down/left/right)
-- Suppression timing
-- Battery/water management
-
-How it works:
-- LLM: Thinks strategically about long-term fire containment
-- PPO: Reacts quickly with learned drone tactics
-
-Author: Shaurya Mallampati
-Date: October 13, 2025
-ISEF 2025 Competition
+The Big Brain.
+This agent uses an LLM (Qwen/Llama) to tell the PPO drones where to go.
+Strategy happens every N steps.
 """
 
 import numpy as np
@@ -40,7 +20,7 @@ except ImportError:
 
 
 class HybridPPOLLMAgent:
-    """Agent that combines PPO for actions with LLM for strategy guidance."""
+    """Combines the strategic LLM with the tactical PPO."""
     
     def __init__(self,
                  llm_model: str = "Qwen/Qwen2.5-1.5B-Instruct",

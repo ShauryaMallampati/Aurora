@@ -1,22 +1,11 @@
 """
-AURORA Evaluation Battery - Fixed Held-Out Test Set
-
-This file defines the official evaluation battery for AURORA ISEF 2025.
-These scenarios are held out from training and used consistently across all experiments.
-
-5 historical fires × 5 evaluation seeds = 25 evaluation episodes per model
-
-Author: Shaurya Mallampati
-Date: October 16, 2025
+The ultimate test.
+5 historical fires, 5 seeds. 25 episodes total.
+If the model can beat these, it's ready.
 """
 
-# Evaluation Battery: 5 Representative Historical Fires
-# Selected for diversity in:
-# - Geography (CA, WA, OR, CO, MT)
-# - Size (small to large)
-# - Wind regimes (calm to high wind)
-# - Terrain (flat to mountainous)
-# - Year (temporal diversity)
+# The Gauntlet: 5 Representative Historical Fires.
+# Chosen because they were hard to fight in real life.
 
 EVALUATION_FIRES = [
     {

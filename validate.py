@@ -1,15 +1,8 @@
 #!/usr/bin/env python3
 """
-Quick validation script for REAL_DATA_STRICT mode.
-
-Tests:
-1. Data integrity (all files present)
-2. CRS reprojection (geometry → EPSG:4326)
-3. USGS elevation API (real terrain data)
-4. NOAA weather (cached or live)
-5. Scenario building (end-to-end)
-
-Run: python validate_strict_mode.py
+Strict Mode Validator.
+Ensures we aren't faking it.
+Checks: Files, CRS, USGS API, NOAA weather, and Scenario generation.
 """
 
 import sys

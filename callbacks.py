@@ -1,14 +1,6 @@
 """
-AURORA Training Callbacks with Evaluation Battery Integration
-
-Enhanced callbacks that:
-1. Track training progress with ETA
-2. Periodically evaluate on held-out battery
-3. Save checkpoints with metadata
-4. Log metrics to CSV
-
-Author: Shaurya Mallampati
-Date: October 16, 2025
+Training callbacks.
+Track progress, save checkpoints, log stats.
 """
 
 import numpy as np
@@ -19,13 +11,13 @@ import json
 from datetime import datetime, timedelta
 
 try:
-    from evaluation_battery import (
+    from evaluate import (
         EVALUATION_FIRES, 
         EVALUATION_SEEDS, 
         save_eval_results
     )
 except ImportError:
-    print("⚠️  evaluation_battery.py not found - evaluation disabled")
+    print("⚠️  evaluate.py not found - evaluation disabled")
     EVALUATION_FIRES = []
     EVALUATION_SEEDS = []
 

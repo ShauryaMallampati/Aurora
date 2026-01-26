@@ -7,6 +7,7 @@ import { Flame } from "lucide-react";
 const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/sim", label: "Mission Control" },
+  { href: "/costs", label: "Cost Analysis" },
   { href: "/scenarios", label: "Scenarios" },
   { href: "/lab", label: "Lab" },
   { href: "/runs", label: "History" },

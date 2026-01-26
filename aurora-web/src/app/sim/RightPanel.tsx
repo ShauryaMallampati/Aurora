@@ -6,14 +6,13 @@ import { TelemetryTab } from "./tabs/TelemetryTab";
 import { GuidanceTab } from "./tabs/GuidanceTab";
 import { ChartsTab } from "./tabs/ChartsTab";
 import { LogsTab } from "./tabs/LogsTab";
-import { WildfireCostComparison } from "@/components/wildfire-cost-comparison";
+// WildfireCostComparison removed - moved to separate page
 
 const TABS = [
   { id: "metrics", label: "Metrics" },
   { id: "telemetry", label: "Telemetry" },
   { id: "guidance", label: "Guidance" },
   { id: "charts", label: "Charts" },
-  { id: "costs", label: "🔥 Real Costs" },
   { id: "logs", label: "Logs" },
 ] as const;
 
@@ -46,7 +45,6 @@ export function RightPanel() {
   {selectedTab === "telemetry" && <TelemetryTab />}
   {selectedTab === "guidance" && <GuidanceTab />}
   {selectedTab === "charts" && <ChartsTab />}
-  {selectedTab === "costs" && <WildfireCostComparison />}
   {selectedTab === "logs" && <LogsTab />}
       </div>
     </div>

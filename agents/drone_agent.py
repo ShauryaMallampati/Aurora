@@ -1,15 +1,6 @@
 """
 A drone agent that fights wildfires.
-
-Each drone has:
-- Battery that drains when moving and recharges at bases
-- Water for dropping on fires
-- A cooldown between suppressions (can't spray every single step)
-- Limited visibility around itself
-- Can move up/down/left/right, suppress nearby fire, or scan
-
-This module handles all the drone logic - movement, resource management,
-and interacting with the fire.
+Has battery, water, and a mission.
 """
 
 from __future__ import annotations
@@ -27,7 +18,6 @@ except ImportError:
 class DroneAgent:
     """A single drone fighting fire."""
 
-    # Action enumeration for clarity
     ACTIONS = {
         0: "stay",
         1: "up",
@@ -35,8 +25,8 @@ class DroneAgent:
         3: "left",
         4: "right",
         5: "suppress",
-        6: "scan",  # New action for detailed scanning
-        7: "communicate",  # New action for agent communication
+        6: "scan",
+        7: "communicate",
     }
 
     def __init__(self, start_pos: Tuple[int, int], 

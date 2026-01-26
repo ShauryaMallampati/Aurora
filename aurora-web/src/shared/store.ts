@@ -1,4 +1,4 @@
-// Zustand store for simulation state
+// Global state management.
 
 import { create } from 'zustand';
 import type {
