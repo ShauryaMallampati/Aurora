@@ -58,6 +58,8 @@ Thumbs.db
 *.log
 logs/
 training.log
+build_log*.txt
+aurora-web/build_log*.txt
 
 # Model files (large files)
 *.zip
@@ -95,6 +97,11 @@ results/enhanced_analysis_*.png
 results/logs/*.json
 results/tensorboard_logs/
 results/phase3_logs/
+results/models/
+results/eval/
+*.next/
+.next/
+out/
 
 # Cache
 .cache/
