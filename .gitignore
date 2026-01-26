@@ -10,7 +10,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/  <-- Don't ignore all 'lib' folders, only the root one if it exists
+/lib/
+/env/
 lib64/
 parts/
 sdist/
@@ -70,7 +72,18 @@ training.log
 *.npz
 *.npy
 *.csv
-*.json
+# results/**/*.json
+# data/**/*.json
+results/**/*.json
+data/**/*.json
+!vercel.json
+!tsconfig.json
+!package.json
+!package-lock.json
+!*.json
+# If you really want to ignore some data jsons, do it specifically:
+# data/huge_data.json
+
 *.xml
 *.tiff
 *.tif

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Play, Activity, Zap, TrendingUp, Globe, Shield, Award, Code2, Cpu, ExternalLink, Flame, ChevronRight, ArrowRight, CheckCircle2 } from "lucide-react";
 
-export const revalidate = 3600;
+
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState("overview");
