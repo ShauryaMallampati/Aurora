@@ -5,6 +5,9 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['recharts', 'lucide-react'],
   },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
 };
 
 export default nextConfig;
