@@ -7,7 +7,7 @@ import { FireLayerCanvas } from "./FireLayerCanvas";
 import { DroneLayer } from "./DroneLayer";
 import { PerimeterLayer } from "./PerimeterLayer";
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "[REDACTED]";
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const LIBRARIES: ("visualization" | "geometry")[] = ["visualization", "geometry"];
 
 const DEFAULT_CENTER = { lat: 36.7783, lng: -119.4179 }; // California
@@ -40,10 +40,10 @@ export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
   const ticks = useSimulationStore((state) => state.ticks);
   const ppoRun = useSimulationStore((state) => state.ppoRun);
   const hybridRun = useSimulationStore((state) => state.hybridRun);
-  
+
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [currentTick, setCurrentTick] = useState(0);
-  const [inspectorPos, setInspectorPos] = useState<{x: number, y: number, lat: number, lng: number} | null>(null);
+  const [inspectorPos, setInspectorPos] = useState<{ x: number, y: number, lat: number, lng: number } | null>(null);
   const [pinnedInspector, setPinnedInspector] = useState(false);
 
   // Use comparison runs if in comparison mode, else use regular ticks
@@ -83,7 +83,7 @@ export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
     if (map && tick?.fireOrigin) {
       const lat = tick.fireOrigin.lat;
       const lng = tick.fireOrigin.lng;
-      
+
       // Validate coordinates before setting
       if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
         map.setCenter({ lat, lng });
@@ -113,13 +113,12 @@ export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
     <div className="w-full h-full relative">
       {/* Model Type Badge */}
       {modelType && (
-        <div className={`absolute top-4 left-4 z-10 px-3 py-1 rounded-lg text-white text-sm font-semibold ${
-          modelType === "ppo" ? "bg-blue-600" : "bg-purple-600"
-        }`}>
+        <div className={`absolute top-4 left-4 z-10 px-3 py-1 rounded-lg text-white text-sm font-semibold ${modelType === "ppo" ? "bg-blue-600" : "bg-purple-600"
+          }`}>
           {modelType === "ppo" ? "PPO Baseline" : "Hybrid (PPO + LLM)"}
         </div>
       )}
-      
+
       <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={LIBRARIES}>
         <GoogleMap
           mapContainerStyle={{ width: "100%", height: "100%" }}
