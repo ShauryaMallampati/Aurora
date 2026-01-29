@@ -1,6 +1,6 @@
 """
-Hybrid PPO + LLM agent for wildfire suppression.
-The LLM provides high-level strategy, PPO handles the tactics.
+Hybrid PPO + LLM agent.
+LLM = strategy, PPO = tactics.
 """
 
 import numpy as np
@@ -41,39 +41,36 @@ class HybridPPOLLMAgent:
         self.temperature = temperature
         self.llm_backend = llm_backend.lower() if isinstance(llm_backend, str) else llm_backend
         
-        # Initialize LLM
+        # Set up LLM bits
         self.model = None
         self.tokenizer = None
         self.pipe = None
         
-        # If Gemini backend is selected, skip attempting to load heavy HF models to avoid
-        # long downloads or gated model failures. Gemini support has been removed
-        # from this codebase; prefer transformers or heuristic fallbacks.
+        # Gemini backend removed; avoid heavy loads and use transformers/heuristics instead.
         hf_token = hf_token or os.getenv("HF_TOKEN")
 
         if self.llm_backend == 'gemini':
-            # Gemini support removed; switch to transformers backend instead.
+            # Gemini removed: switch to transformers.
             print("⚠️  Gemini backend requested but unsupported. Switching to 'transformers' backend.")
             self.llm_backend = 'transformers'
         else:
             if TRANSFORMERS_AVAILABLE:
-                # Keep an HF token available (left in code per user request). WARNING: embedding
-                # tokens in source is insecure; prefer HF_TOKEN env var or passing hf_token.
+                # HF token is optional; don't hardcode. Prefer HF_TOKEN env var.
                 if hf_token:
                     print("🔒 HuggingFace token present in code (will be used for gated meta-llama models).")
                 else:
                     print("⚠️  No HuggingFace token found. Using heuristic fallback for strategic guidance if model load fails.")
 
-                # Attempt to load the requested model. For gated/meta-llama models we will pass the token.
+                # Try to load the model (pass token for gated/meta-llama).
                 try:
-                    # Determine device
+                    # Pick device
                     if device == "auto":
                         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-                    # Decide whether the model is a gated model that needs a token
+                    # Check if model is gated
                     is_gated_model = llm_model.startswith("meta-llama") or llm_model.startswith("meta/llama")
 
-                    # Load tokenizer: pass token only if model is gated and token is available
+                    # Load tokenizer (token only if gated)
                     tokenizer_kwargs = {"trust_remote_code": True}
                     if is_gated_model and hf_token:
                         tokenizer_kwargs["token"] = hf_token
@@ -83,8 +80,8 @@ class HybridPPOLLMAgent:
                         **tokenizer_kwargs
                     )
 
-                    # Choose dtype and device_map recommendations
-                    # For some gated models BF16/auto device mapping is recommended; fall back otherwise
+                    # Pick dtype + device map
+                    # Gated models prefer BF16/auto; fall back otherwise
                     if is_gated_model:
                         torch_dtype = torch.bfloat16 if device == "cuda" else torch.float32
                         device_map = "auto"
@@ -105,7 +102,7 @@ class HybridPPOLLMAgent:
                         **model_kwargs
                     )
 
-                    # Create pipeline
+                    # Build pipeline
                     self.pipe = pipeline(
                         "text-generation",
                         model=self.model,
@@ -123,16 +120,16 @@ class HybridPPOLLMAgent:
                     print("    Using heuristic fallback for strategic guidance.")
             else:
                 print("⚠️  Transformers library not available. Using heuristic fallback.")
-        # Ensure transformers availability note
+        # If transformers missing, stick to heuristic
         if self.llm_backend == 'transformers' and not TRANSFORMERS_AVAILABLE:
             print("⚠️  Transformers library not available. Using heuristic fallback.")
         
-        # Strategic guidance state
+        # Strategy state
         self.current_strategy = None
         self.steps_since_guidance = 0
         self.guidance_history = []
         
-        # Statistics
+        # Stats
         self.llm_calls = 0
         self.llm_tokens_used = 0
         self.llm_errors = 0
@@ -149,7 +146,7 @@ class HybridPPOLLMAgent:
         """
         
         if not self.pipe:
-            # No transformers pipeline available or running in heuristic mode
+            # No pipeline or heuristic mode
             return self._fallback_strategy(fire_state, drone_positions, drone_states)
         
         try:
@@ -158,14 +155,14 @@ class HybridPPOLLMAgent:
             grid_size = fire_state.shape[0]
             fire_pct = (total_burning / (grid_size * grid_size)) * 100
             
-            # Find fire hotspots (clusters of burning cells)
+            # Find fire hotspots (clusters)
             hotspots = self._find_fire_hotspots(fire_state)
             
-            # Summarize drone states
+            # Summarize drones
             avg_battery = np.mean([d['battery_percentage'] for d in drone_states])
             avg_water = np.mean([d['water_percentage'] for d in drone_states])
             
-            # Construct prompt for Llama-2 with proper chat format
+            # Build prompt for Llama-2 chat format
             system_prompt = "You are an expert wildfire incident commander AI providing strategic guidance to drone operators fighting wildfires."
             
             user_prompt = f"""CURRENT WILDFIRE SITUATION (Step {step}):
@@ -197,12 +194,11 @@ Focus on:
 2. Preventing fire spread to unburned areas
 3. Balancing suppression with battery/water conservation"""
 
-            # Format prompt for Llama-2-chat
+            # Format prompt
             prompt = f"<s>[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{user_prompt} [/INST]"
             
-            # Generate response via selected backend
-            # Only transformers backend supported for direct model generation
-            # ALWAYS WAIT for response to complete (blocking call)
+            # Generate response (transformers only)
+            # Blocking call: wait for completion
             print(f"⏳ Waiting for Qwen guidance at step {step}...")
             outputs = self.pipe(
                 prompt, 
@@ -213,13 +209,13 @@ Focus on:
             response_text = outputs[0].get('generated_text', '')
             print(f"✅ Qwen responded")
             
-            # Extract JSON from response (after [/INST])
+            # Extract JSON (after [/INST])
             if '[/INST]' in response_text:
                 json_text = response_text.split('[/INST]')[-1].strip()
             else:
                 json_text = response_text
             
-            # Try to extract JSON with improved regex and fallback
+            # Try regex first, then fallback
             import re
             # First try: match balanced braces
             json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', json_text, re.DOTALL)
@@ -232,7 +228,7 @@ Focus on:
                 except json.JSONDecodeError:
                     pass
             
-            # If first regex failed, try to find the first { and last }
+            # If regex fails, use first + last brace
             if not guidance:
                 start_idx = json_text.find('{')
                 end_idx = json_text.rfind('}')
@@ -243,14 +239,14 @@ Focus on:
                     except json.JSONDecodeError:
                         pass
             
-            # If still no valid JSON, fall back to heuristic strategy
+            # If still invalid, fall back to heuristic
             if not guidance:
                 self.llm_errors += 1
                 return self._fallback_strategy(fire_state, drone_positions, drone_states)
             
-            # Update statistics
+            # Update stats
             self.llm_calls += 1
-            # Estimate tokens (rough approximation)
+            # Rough token estimate
             prompt_tokens = len(prompt.split())
             response_tokens = len(json_text.split())
             self.llm_tokens_used += prompt_tokens + response_tokens
@@ -267,24 +263,23 @@ Focus on:
             return guidance
             
         except Exception as e:
-            # On any other error, use fallback instead of stopping
+            # On error, fall back instead of crashing
             self.llm_errors += 1
             return self._fallback_strategy(fire_state, drone_positions, drone_states)
 
-    # Gemini API support has been intentionally removed from the codebase.
-    # If external API-based backends are required in future, implement them
-    # as separate optional adapters outside the core repository and load
-    # them via plugin interfaces. This keeps API keys out of source.
+    # Gemini API is intentionally removed.
+    # If you add API backends later, keep them in optional adapters
+    # so keys never land in source.
     
     def _fallback_strategy(self, fire_state, drone_positions, drone_states) -> Dict:
         """Heuristic fallback when LLM is unavailable."""
         
         hotspots = self._find_fire_hotspots(fire_state)
         
-        # Priority zones = largest hotspots
+        # Priority zones are the biggest hotspots
         priority_zones = [h['centroid'] for h in hotspots[:5]]
         
-        # Assign drones to nearest priority zones
+        # Assign drones to nearest zones
         assignments = {}
         for i, pos in enumerate(drone_positions):
             if priority_zones:
@@ -393,27 +388,27 @@ def test_hybrid_agent():
     agent = HybridPPOLLMAgent(
         llm_model="meta-llama/Llama-2-7b-chat-hf",
         llm_guidance_frequency=10,
-        hf_token=None  # Will use HF_TOKEN env var if set
+        hf_token=None  # will use HF_TOKEN env var if set
     )
     
-    # Initialize demonstration fire state from historical training data
+    # Demo fire state from historical training data
     grid_size = 50
     fire_state = np.zeros((grid_size, grid_size), dtype=np.uint8)
     
-    # Add example fire clusters (simulating wildfire perimeter)
-    fire_state[10:15, 10:15] = 1  # Hotspot 1
-    fire_state[30:35, 25:32] = 1  # Hotspot 2
-    fire_state[20:22, 40:43] = 1  # Hotspot 3
+    # Example fire clusters (simulated perimeter)
+    fire_state[10:15, 10:15] = 1  # hotspot 1
+    fire_state[30:35, 25:32] = 1  # hotspot 2
+    fire_state[20:22, 40:43] = 1  # hotspot 3
     
-    # Example drone configuration
-    drone_positions = [(5, 5), (25, 25), (40, 40)]  # GPS-style coordinates
+    # Example drone setup
+    drone_positions = [(5, 5), (25, 25), (40, 40)]  # GPS-style coords
     drone_states = [
         {'battery_percentage': 80, 'water_percentage': 60, 'suppression_count': 3},
         {'battery_percentage': 45, 'water_percentage': 30, 'suppression_count': 5},
         {'battery_percentage': 90, 'water_percentage': 80, 'suppression_count': 1}
     ]
     
-    # Realistic weather conditions from NOAA integration
+    # Sample NOAA-style weather
     weather = {
         'temperature_f': 85,
         'wind_speed_mph': 15,

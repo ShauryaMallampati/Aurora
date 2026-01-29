@@ -5,7 +5,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Run record type matching our database schema
+// Run record type that matches the DB schema
 export interface RunRecord {
   id: string;
   scenario: string;
@@ -21,7 +21,7 @@ export interface RunRecord {
   config?: Record<string, unknown>;
 }
 
-// Functions for run history persistence
+// Helpers for run history persistence
 export async function saveRun(run: Omit<RunRecord, 'timestamp' | 'id'>): Promise<RunRecord | null> {
   const runWithId = {
     ...run,

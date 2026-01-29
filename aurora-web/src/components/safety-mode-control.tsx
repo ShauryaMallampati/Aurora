@@ -68,7 +68,7 @@ export function SafetyModeControl() {
 
   const droneWithinResidential = (lat: number, lng: number): ResidentialZone | null => {
     for (const zone of RESIDENTIAL_ZONES) {
-      const distance = Math.sqrt(Math.pow(lat - zone.lat, 2) + Math.pow(lng - zone.lng, 2)) * 111000; // Approx meters per degree
+      const distance = Math.sqrt(Math.pow(lat - zone.lat, 2) + Math.pow(lng - zone.lng, 2)) * 111000; // approx meters per degree
       if (distance < zone.radius_meters) {
         return zone;
       }

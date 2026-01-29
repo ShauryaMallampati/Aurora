@@ -37,7 +37,7 @@ export default function SimulationPage() {
     setShowFireCreator(false);
 
     // TODO: Implement actual simulation start with this config
-    // For now just log it - backend integration needed
+    // For now just log it; backend integration needed
   };
 
   // If split view is enabled, show comparison instead

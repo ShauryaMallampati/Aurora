@@ -30,8 +30,8 @@ interface ProximityResponse {
 }
 
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  // Haversine formula for accurate distance calculation
-  const R = 6371000; // Earth radius in meters
+  // Haversine for accurate distance
+  const R = 6371000; // Earth radius (m)
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Proximity
 
     const proximityLimit = body.proximity_limit_m || 200;
 
-    // Check proximity to all residential zones
+    // Check proximity to residential zones
     let nearestZone: ResidentialZone | null = null;
     let minDistance = Infinity;
     let withinRestrictedZone = false;
@@ -72,14 +72,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<Proximity
         nearestZone = zone;
       }
 
-      // Check if within the zone + proximity limit
+      // Check if within zone + buffer
       if (distance < zone.radius_meters + proximityLimit) {
         withinRestrictedZone = true;
         break;
       }
     }
 
-    // Determine if safe
+    // Determine safety
     const safe = !withinRestrictedZone || body.manual_override;
 
     let reason = '';

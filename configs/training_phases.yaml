@@ -1,8 +1,8 @@
-# AURORA ISEF 2025 Training Configuration
-# Optimized for realistic ISEF timeline with n_envs=4
-# Total: 400K environment steps across 3 phases (~8-12 hours training)
+# AURORA ISEF 2025 training config
+# Tuned for a realistic ISEF timeline with n_envs=4
+# Total: 400K env steps across 3 phases (~8-12 hours)
 
-# PPO Parameters (with n_steps=2048, num_envs=4 → 8192 steps/update)
+# PPO params (n_steps=2048, num_envs=4 -> 8192 steps/update)
 ppo_defaults:
   n_steps: 2048
   num_envs: 2
@@ -13,11 +13,11 @@ ppo_defaults:
   vf_coef: 0.5
   max_grad_norm: 0.5
   learning_rate: 3e-4
-  steps_per_update: 4096  # n_steps × num_envs (2048 × 2)
+  steps_per_update: 4096  # n_steps x num_envs (2048 x 2)
 
-# Checkpointing & Evaluation
+# Checkpointing + evaluation
 checkpoint:
-  save_every_steps: 5000       # Save every 5K steps for resume capability
+  save_every_steps: 5000       # Save every 5K steps for resume
   save_every_updates: 5
   keep_top_n: 10               # Keep more checkpoints for safety
   eval_every_updates: 10
@@ -27,7 +27,7 @@ eval_splits:
   temporal: "all_years"        # Use all years (1308-2024)
   geographic: "all_us_states"  # Use all US states (no holdout)
 
-# Metrics to Track
+# Metrics to track
 metrics:
   - mean_return
   - return_95ci
@@ -44,7 +44,7 @@ phase_a:
   name: "Sanity Check & Real Data Overfit"
   purpose: "Verify learning works and model locks onto real fire patterns"
   
-  updates: 7             # 7 × 8192 ≈ 57K steps
+  updates: 7             # 7 x 8192 ~ 57K steps
   env_steps: 57_344      # ~50K for quick sanity check
   
   # Data settings
@@ -79,10 +79,10 @@ phase_b:
   name: "Curriculum on Real Data"
   purpose: "Scale difficulty and generality within real dataset"
   
-  updates: 18            # 18 × 8192 ≈ 147K steps
+  updates: 18            # 18 x 8192 ~ 147K steps
   env_steps: 147_456     # ~150K for curriculum learning
   
-  # Data settings (increased complexity)
+  # Data settings (more complexity)
   scenario_pool_size: 5000
   fire_size_range: [10, 200]
   wind_speed_range: [0, 25]
@@ -119,7 +119,7 @@ phase_c:
   name: "Full Dataset Mix"
   purpose: "Expose broad geography and years, maintain generalization"
   
-  updates: 24            # 24 × 8192 ≈ 196K steps
+  updates: 24            # 24 x 8192 ~ 196K steps
   env_steps: 196_608     # ~200K for full dataset exposure
   
   # Data settings (full diversity)
@@ -130,7 +130,7 @@ phase_c:
   horizon: 200
   balanced_sampling: true
   
-  # Geographic & Temporal diversity
+  # Geographic + temporal diversity
   sample_years: [1308, 2024]  # Full range
   sample_states: "all_except_holdout"
   
@@ -167,9 +167,9 @@ phase_d:
   purpose: "Strengthen strategy use without destabilizing PPO"
   
   updates: 250
-  env_steps: 2_048_000  # 250 × 8192 ≈ 2.05M
+  env_steps: 2_048_000  # 250 x 8192 ~ 2.05M
   
-  # Data settings (maintain full diversity)
+  # Data settings (full diversity)
   scenario_pool_size: 116337
   fire_size_range: [5, 300]
   balanced_sampling: true

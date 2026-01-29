@@ -1,12 +1,13 @@
 """
 Hybrid PPO + LLM training on real fire data.
+Real data only. No synthetic shortcuts.
 """
 
 import sys
 import os
 from pathlib import Path as _Path
 
-# Add data/agents to path so imports work
+# Add data/agents to sys.path so imports don't break
 _BASE_DIR = _Path(__file__).parent.resolve()
 sys.path.append(str(_BASE_DIR / 'data'))
 sys.path.append(str(_BASE_DIR / 'agents'))
@@ -20,13 +21,13 @@ import json
 from datetime import datetime, timedelta
 import shutil
 
-# Stable-Baselines3
+# Stable-Baselines3 imports
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 
-# Import AURORA modules
+# AURORA modules
 from env.fire_sim import FireSim
 from agents.drone_agent import DroneAgent
 from data.real_data_integration_complete import RealDataIntegrator
@@ -52,7 +53,7 @@ class HybridRealFireEnv(gym.Env):
         self.current_step = 0
         self.integrator = integrator
         
-        # If LLM is off, just use PPO.
+        # If LLM is off, stick to PPO
         if (llm_guidance_freq is not None and llm_guidance_freq >= 999999) or not llm_model or llm_model.lower() == 'none':
             self.hybrid_agent = None
         else:
@@ -63,8 +64,8 @@ class HybridRealFireEnv(gym.Env):
                 llm_backend=llm_backend
             )
         
-        # 9 channels: 6 for the world, 3 for the LLM's brain.
-        # [fire, terrain, elev, fuel, batt, H2O, weight, x, y]
+        # 9 channels: 6 world + 3 strategy
+        # [fire, terrain, elev, fuel, batt, water, weight, x, y]
         self.observation_space = spaces.Box(
             low=0, high=1, shape=(3, 3, 9), dtype=np.float32
         )
@@ -73,7 +74,7 @@ class HybridRealFireEnv(gym.Env):
         # 0: stay, 1-4: move (up/down/left/right), 5: suppress, 6: scan, 7: communicate
         self.action_space = spaces.Discrete(8)
         
-        # Initialize environment components
+        # Env state
         self.fire_sim = None
         self.drones = []
         self.current_scenario = None
@@ -83,7 +84,7 @@ class HybridRealFireEnv(gym.Env):
         """Reset environment with a new real fire scenario."""
         super().reset(seed=seed)
         
-        # Get new real fire scenario
+        # Pull a new real-fire scenario
         if self.integrator:
             try:
                 self.current_scenario = self.integrator.create_training_scenario(
@@ -92,22 +93,22 @@ class HybridRealFireEnv(gym.Env):
                     max_acres=50000
                 )
                 
-                # Initialize fire simulation with real data
+                # Start fire sim with real data
                 initial_fire = self.current_scenario['initial_fire_grid'].astype(np.uint8)
                 
                 self.fire_sim = FireSim(
                     grid_size=self.grid_size
                 )
                 
-                # Reset with real fire grid
+                # Reset using the real fire grid
                 self.fire_sim.reset(initial_fire_grid=initial_fire)
                 
-                # Set weather from NOAA data
+                # Set NOAA weather
                 weather = self.current_scenario['weather']
                 wind_dirs = {'N': (0, -1), 'NE': (1, -1), 'E': (1, 0), 'SE': (1, 1), 
                            'S': (0, 1), 'SW': (-1, 1), 'W': (-1, 0), 'NW': (-1, -1)}
                 wind_dir = wind_dirs.get(weather['wind_direction'], (0, 0))
-                wind_speed = weather['wind_speed_mph'] / 25.0  # Normalize
+                wind_speed = weather['wind_speed_mph'] / 25.0  # normalize
                 
                 self.fire_sim.set_wind(wind_dir, wind_speed)
                 self.fire_sim.set_weather(
@@ -115,12 +116,12 @@ class HybridRealFireEnv(gym.Env):
                     temperature=weather['temperature_c']
                 )
                 
-                # Set terrain from real data
+                # Apply real terrain
                 terrain = self.current_scenario['terrain']
                 self.fire_sim.elevation = (terrain['elevation'] / 3000.0).astype(np.float32)
                 self.fire_sim.fuel_density = (0.7 + terrain['slope'] * 0.3).astype(np.float32)
                 
-                # Assert all rasters align
+                # Make sure rasters align
                 expected_shape = (self.grid_size, self.grid_size)
                 assert self.fire_sim.fire_state.shape == expected_shape, f"Fire grid shape mismatch: {self.fire_sim.fire_state.shape} != {expected_shape}"
                 assert self.fire_sim.elevation.shape == expected_shape, f"Elevation shape mismatch: {self.fire_sim.elevation.shape} != {expected_shape}"
@@ -128,7 +129,7 @@ class HybridRealFireEnv(gym.Env):
                 
             except Exception as e:
                 print(f"⚠️  Error loading real scenario: {e}")
-                # STRICT MODE: No synthetic fallback - retry with another real scenario
+                # Strict mode: no synthetic fallback; retry another real scenario
                 if self.integrator:
                     print("   Retrying with another random real scenario...")
                     return self.reset(seed=seed)
@@ -137,7 +138,7 @@ class HybridRealFireEnv(gym.Env):
         else:
             raise RuntimeError("No real data integrator provided - cannot proceed without real data")
         
-        # Initialize drones at random positions
+        # Spawn drones at random positions
         self.drones = []
         for i in range(self.num_drones):
             x = np.random.randint(0, self.grid_size)
@@ -147,10 +148,10 @@ class HybridRealFireEnv(gym.Env):
         
         self.current_step = 0
         
-        # Get initial strategic guidance
+        # Get initial strategy snapshot
         self._update_strategy()
         
-        # Return observation for first drone
+        # Return obs for first drone
         obs = self._get_observation(0)
         return obs, {}
     
@@ -171,19 +172,19 @@ class HybridRealFireEnv(gym.Env):
     def _update_strategy(self):
         """Request LLM guidance if enabled and due."""
         if self.hybrid_agent is None:
-            # LLM disabled for pure PPO baseline
+            # LLM off for pure PPO baseline
             self.current_strategy = None
             return
         
         if self.hybrid_agent.should_request_guidance(self.current_step):
-            # Prepare drone states
+            # Prep drone state
             drone_positions = [tuple(d.position) for d in self.drones]
             drone_states = [d.get_status() for d in self.drones]
             
-            # Get weather
+            # Grab weather
             weather = self.current_scenario.get('weather', {})
             
-            # Request strategic guidance
+            # Request guidance
             self.current_strategy = self.hybrid_agent.get_strategic_guidance(
                 fire_state=self.fire_sim.fire_state,
                 drone_positions=drone_positions,
@@ -198,22 +199,22 @@ class HybridRealFireEnv(gym.Env):
         # Update strategy if needed
         self._update_strategy()
         
-        # Execute action for first drone
+        # Apply action for first drone
         drone = self.drones[0]
         action_result = drone.act(action, self.fire_sim, self.drones)
         
-        # Step fire simulation
+        # Step fire sim
         self.fire_sim.step()
         self.current_step += 1
         
-        # Calculate reward (enhanced with strategic alignment)
+        # Compute reward (incl. strategy alignment)
         reward = self._calculate_reward()
         
-        # Check termination
+        # Check terminal condition
         terminated = self.current_step >= self.max_steps
         truncated = drone.battery <= 0
         
-        # Get observation
+        # Build observation
         obs = self._get_observation(0)
         
         return obs, reward, terminated, truncated, {}
@@ -234,7 +235,7 @@ class HybridRealFireEnv(gym.Env):
                 nx = max(0, min(self.grid_size - 1, nx))
                 ny = max(0, min(self.grid_size - 1, ny))
                 
-                # Original channels (0-5)
+                # Base channels (0-5)
                 obs[i+1, j+1, 0] = 1.0 if self.fire_sim.fire_state[ny, nx] == 1 else 0.0
                 obs[i+1, j+1, 1] = self.fire_sim.terrain[ny, nx] / 3.0
                 obs[i+1, j+1, 2] = self.fire_sim.elevation[ny, nx] / 100.0
@@ -242,9 +243,9 @@ class HybridRealFireEnv(gym.Env):
                 obs[i+1, j+1, 4] = drone.battery
                 obs[i+1, j+1, 5] = drone.water
                 
-                # Strategic channels (6-8) from LLM guidance
+                # Strategy channels (6-8) from LLM guidance
                 if self.current_strategy:
-                    # Channel 6: Priority weight (distance to nearest priority zone)
+                    # Channel 6: priority weight (dist to nearest zone)
                     priority_zones = self.current_strategy.get('priority_zones', [])
                     if priority_zones:
                         distances = [abs(ny - z[0]) + abs(nx - z[1]) for z in priority_zones]
@@ -252,7 +253,7 @@ class HybridRealFireEnv(gym.Env):
                         # Closer to priority zone = higher weight
                         obs[i+1, j+1, 6] = max(0, 1.0 - min_dist / self.grid_size)
                     
-                    # Channels 7-8: Strategic direction vector to assigned zone
+                    # Channels 7-8: direction vector to assigned zone
                     assignments = self.current_strategy.get('drone_assignments', {})
                     drone_key = f"drone_{drone_id}"
                     if drone_key in assignments and priority_zones:
@@ -270,7 +271,7 @@ class HybridRealFireEnv(gym.Env):
     def _calculate_reward(self) -> float:
         """Compute reward based on fire suppression and strategic alignment."""
         
-        # Base fire suppression reward
+        # Base suppression reward
         burning_cells = np.sum(self.fire_sim.fire_state == 1)
         total_cells = self.grid_size * self.grid_size
         fire_coverage = burning_cells / total_cells
@@ -285,7 +286,7 @@ class HybridRealFireEnv(gym.Env):
         avg_battery = sum(d.battery for d in self.drones) / len(self.drones)
         battery_penalty = -1.0 if avg_battery < 0.2 else 0.0
         
-        # Strategic alignment bonus
+        # Strategy alignment bonus
         strategic_bonus = 0.0
         if self.current_strategy:
             priority_zones = self.current_strategy.get('priority_zones', [])
@@ -313,8 +314,8 @@ class TrainingCallback(BaseCallback):
                  save_path: str = "./results/checkpoints/",
                  verbose: int = 1):
         super().__init__(verbose)
-        self.check_freq = check_freq  # Print progress every 100 steps
-        self.save_freq = save_freq    # Save checkpoint every 500 steps
+        self.check_freq = check_freq  # print progress every 100 steps
+        self.save_freq = save_freq    # save checkpoint every 500 steps
         self.total_timesteps = total_timesteps
         self.hybrid_agent = hybrid_agent
         self.save_path = _Path(save_path)
@@ -334,7 +335,7 @@ class TrainingCallback(BaseCallback):
         
         # Real-time progress updates (every check_freq steps)
         if self.n_calls % self.check_freq == 0:
-            # Calculate progress
+            # Compute progress
             progress = (self.n_calls / self.total_timesteps) * 100
             elapsed = datetime.now() - self.start_time
             steps_per_sec = self.n_calls / elapsed.total_seconds() if elapsed.total_seconds() > 0 else 0
@@ -342,20 +343,20 @@ class TrainingCallback(BaseCallback):
             eta_seconds = remaining_steps / steps_per_sec if steps_per_sec > 0 else 0
             eta = str(timedelta(seconds=int(eta_seconds)))
             
-            # Real-time console update (on same line)
+            # Console tick (same line)
             print(f"\r� STEP {self.n_calls:,}/{self.total_timesteps:,} ({progress:.1f}%) | "
                   f"⏱️ {steps_per_sec:.0f} steps/sec | ETA: {eta}", end='', flush=True)
             
             # Detailed log every 1000 steps
             if self.n_calls % 1000 == 0:
-                print()  # New line for detailed log
+                print()  # new line for detailed log
                 if len(self.episode_rewards) > 0:
                     mean_reward = np.mean(self.episode_rewards[-10:])
                     mean_length = np.mean(self.episode_lengths[-10:])
                     print(f"   🎯 Mean reward (last 10 ep): {mean_reward:.2f}")
                     print(f"   📏 Mean episode length: {mean_length:.1f}")
                 
-                # LLM statistics
+                # LLM stats
                 if self.hybrid_agent:
                     stats = self.hybrid_agent.get_statistics()
                     print(f"   🧠 LLM calls: {stats['llm_calls']}, "
@@ -363,12 +364,12 @@ class TrainingCallback(BaseCallback):
                           f"Errors: {stats['llm_errors']}")
                 print("-"*80)
         
-        # Save checkpoint every save_freq steps
+        # Checkpoint every save_freq steps
         if self.n_calls > 0 and self.n_calls % self.save_freq == 0 and self.n_calls != self.last_save_step:
             self.last_save_step = self.n_calls
             checkpoint_path = self.save_path / f"checkpoint_step_{self.n_calls}"
             self.model.save(str(checkpoint_path))
-            print(f"\n💾 Checkpoint saved at step {self.n_calls:,} → {checkpoint_path}")
+            print(f"\n💾 Checkpoint saved at step {self.n_calls:,} -> {checkpoint_path}")
         
         return True
     
@@ -383,7 +384,7 @@ class TrainingCallback(BaseCallback):
 def make_env(rank: int, llm_model: str, llm_freq: int, hf_token: str, llm_backend: str = 'transformers'):
     """Factory for creating hybrid environments."""
     def _init():
-        # Load integrator in each subprocess
+        # Load integrator per subprocess
         integrator = RealDataIntegrator()
         
         env = HybridRealFireEnv(
@@ -404,7 +405,7 @@ def make_env(rank: int, llm_model: str, llm_freq: int, hf_token: str, llm_backen
 def main():
     parser = argparse.ArgumentParser(description='Train Hybrid PPO + Llama-2 on real fire data - ISEF 2025')
     
-    # Phase configuration
+    # Phase config
     parser.add_argument('--phase', type=str, default='full', 
                        choices=['phase_a', 'phase_b', 'phase_c', 'full', 'quick', 'test'],
                        help='Training phase: phase_a (50K), phase_b (150K), phase_c (200K), full (400K), quick (50K), or test (10K debug)')
@@ -413,11 +414,11 @@ def main():
     parser.add_argument('--timesteps', type=int, default=None, 
                        help='Total training timesteps (overrides phase setting)')
     
-    # Environment
+    # Env settings
     parser.add_argument('--n_envs', type=int, default=2, 
                        help='Number of parallel environments (2 recommended, 4096 steps/update)')
     
-    # LLM configuration
+    # LLM settings
     parser.add_argument('--llm_model', type=str, default='Qwen/Qwen2.5-1.5B-Instruct',
                        help='HuggingFace LLM model ID (Qwen recommended for ISEF)')
     parser.add_argument('--llm_freq', type=int, default=500,
@@ -427,7 +428,7 @@ def main():
     parser.add_argument('--llm_backend', type=str, default='transformers',
                        help='LLM backend to use: transformers (preferred)')
     
-    # Checkpointing & evaluation
+    # Checkpointing + eval
     parser.add_argument('--save_freq', type=int, default=40960,
                        help='Save model every N steps (default: every 5 updates = 40960 steps)')
     parser.add_argument('--eval_freq', type=int, default=81920,
@@ -437,7 +438,7 @@ def main():
     parser.add_argument('--resume', action='store_true', default=False,
                        help='Auto-resume from latest checkpoint without prompting (y)')
     
-    # Other options
+    # Misc options
     parser.add_argument('--verbose', type=int, default=1,
                        help='Verbosity level')
 
@@ -469,7 +470,7 @@ def main():
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(args.seed)
     
-    # Calculate total timesteps
+    # Compute total timesteps
     if args.timesteps:
         total_timesteps = args.timesteps
         phase_name = f'Custom ({args.timesteps:,} steps)'
@@ -494,7 +495,7 @@ def main():
     print(f"Phase: {phase_name}")
     print(f"Total timesteps: {args.timesteps:,}")
     print(f"Updates planned: {args.timesteps // (2048 * args.n_envs)}")
-    print(f"Steps per update: {2048 * args.n_envs:,} (n_steps=2048 × n_envs={args.n_envs})")
+    print(f"Steps per update: {2048 * args.n_envs:,} (n_steps=2048 x n_envs={args.n_envs})")
     print(f"Estimated wall time: {(args.timesteps / 200_000):.1f} - {(args.timesteps / 150_000):.1f} hours")
     print(f"\nEnvironments: {args.n_envs} parallel")
     print(f"LLM model: {args.llm_model}")
@@ -507,18 +508,17 @@ def main():
     print("\n📊 Real Fire Data: 116,337 fires from InterAgency Fire Perimeter History")
     print("="*80 + "\n")
     
-    # Setup parallel environments
+    # Set up parallel envs
     print(f"Creating {args.n_envs} parallel hybrid environments...")
     print(f"(Each environment will use {args.llm_model} for strategic guidance)")
     
-    # Prevent tokenizer fork warnings
+    # Avoid tokenizer fork warnings
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
     
     # Use main process for LLM
     worker_backend = args.llm_backend
     if args.n_envs > 1 and args.llm_backend == 'transformers':
-        # Use heuristic/transformers mix — avoid loading full model in each worker by
-        # relying on lightweight local models or heuristic guidance when appropriate.
+        # Use a transformers/heuristic mix to avoid loading heavy models per worker
         print(f"⚡ SPEED OPTIMIZATION: Using transformers/heuristic mix for {args.n_envs} workers")
         env = SubprocVecEnv([make_env(i, args.llm_model, args.llm_freq, hf_token, worker_backend) 
                             for i in range(args.n_envs)])
@@ -548,14 +548,14 @@ def main():
     
     if checkpoints:
         latest_checkpoint = checkpoints[-1]
-        # Extract step number from checkpoint name (remove .zip extension)
+        # Extract step number from checkpoint name (strip .zip)
         try:
             # checkpoint_step_204800.zip -> 204800
             step_str = latest_checkpoint.stem.split("_")[-1]
             resume_step = int(step_str)
             print(f"🔄 Found checkpoint at step {resume_step:,}: {latest_checkpoint}")
             
-            # Auto-resume if --resume flag is set, otherwise ask user
+            # Auto-resume if --resume is set, else ask
             if args.resume:
                 user_input = 'y'
                 print(f"   Auto-resuming (--resume flag set)")
@@ -572,11 +572,11 @@ def main():
             print(f"⚠️  Could not parse checkpoint name: {latest_checkpoint}")
             latest_checkpoint = None
     
-    # Setup PPO model
+    # Set up PPO model
     if latest_checkpoint and resume_step > 0:
         print(f"Loading model from checkpoint: {latest_checkpoint}")
         model = PPO.load(str(latest_checkpoint), env=env)
-        # Adjust total timesteps to account for already-trained steps
+        # Adjust timesteps for resumed runs
         remaining_timesteps = max(0, args.timesteps - resume_step)
         print(f"✅ Model loaded - will train for {remaining_timesteps:,} more steps")
         print(f"   (Total target: {args.timesteps:,}, Already trained: {resume_step:,})\n")
@@ -594,15 +594,15 @@ def main():
             gae_lambda=0.95,
             clip_range=0.2,
             verbose=args.verbose,
-            policy_kwargs=dict(net_arch=[256, 256, 128]),  # Larger network for hybrid
+            policy_kwargs=dict(net_arch=[256, 256, 128]),  # larger net for hybrid
             tensorboard_log=None
         )
         print("✅ Model initialized\n")
     
-    # Setup training callback
+    # Set up training callback
     callback = TrainingCallback(
-        check_freq=args.progress_freq,           # Print progress every N steps (real-time)
-        save_freq=args.save_freq,                # Save checkpoint every N steps (from CLI)
+        check_freq=args.progress_freq,           # print progress every N steps
+        save_freq=args.save_freq,                # save checkpoint every N steps
         total_timesteps=args.timesteps, 
         save_path="./results/checkpoints/",
         verbose=1

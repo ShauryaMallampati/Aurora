@@ -1,4 +1,4 @@
-// Zustand store for simulation state
+// Zustand store for sim state
 
 import { create } from 'zustand';
 import type {
@@ -75,7 +75,7 @@ export const useSimulationStore = create<SimulationState>((set: any) => ({
 
   updateTick: (tick: TelemetryTick) => set((state: SimulationState) => ({
     currentTick: tick,
-    ticks: [...state.ticks.slice(-500), tick], // Keep last 500 ticks
+    ticks: [...state.ticks.slice(-500), tick], // keep last 500 ticks
   })),
 
   updateGuidance: (guidance: LLMGuidance) => set((state: SimulationState) => ({

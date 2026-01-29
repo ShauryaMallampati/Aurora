@@ -1,14 +1,14 @@
 /**
- * Runs Data Loader
- * 
- * Service for loading and parsing PPO vs Hybrid simulation logs from the backend.
- * Handles CSV/JSON log files and computes comparison metrics.
+ * Runs data loader.
+ *
+ * Loads PPO vs Hybrid runs from the backend, parses logs,
+ * and computes comparison metrics.
  */
 
 import type { TelemetryTick, Metrics, Drone, Weather } from './types';
 
 /**
- * Represents a single simulation run with all telemetry data
+ * One full simulation run + its telemetry.
  */
 export interface SimulationRun {
   runId: string;
@@ -33,7 +33,7 @@ export interface SimulationRun {
 }
 
 /**
- * Comparison metrics between PPO and Hybrid runs
+ * Comparison metrics between PPO and Hybrid runs.
  */
 export interface ComparisonMetrics {
   areaSavedPercent: number; // (PPO_area - Hybrid_area) / PPO_area * 100
@@ -45,7 +45,7 @@ export interface ComparisonMetrics {
 }
 
 /**
- * Metadata about available runs
+ * Metadata for available runs.
  */
 export interface RunMetadata {
   runId: string;
@@ -59,7 +59,7 @@ export interface RunMetadata {
 const API_BASE = 'http://localhost:8000';
 
 /**
- * Load a single run from the backend by ID
+ * Load a single run from the backend by ID.
  */
 export async function loadRun(runId: string): Promise<SimulationRun> {
   try {
@@ -75,7 +75,7 @@ export async function loadRun(runId: string): Promise<SimulationRun> {
 }
 
 /**
- * List available runs for a given model type
+ * List runs (optionally filtered by model type).
  */
 export async function listRuns(modelType?: 'ppo' | 'hybrid'): Promise<RunMetadata[]> {
   try {
@@ -95,8 +95,8 @@ export async function listRuns(modelType?: 'ppo' | 'hybrid'): Promise<RunMetadat
 }
 
 /**
- * Find matching PPO and Hybrid runs for comparison
- * Looks for runs with the same scenario and seed
+ * Find matching PPO + Hybrid runs for comparison.
+ * Matches on scenario and seed when possible.
  */
 export async function findMatchingRuns(
   scenario?: string,
@@ -158,7 +158,7 @@ export function calculateComparisonMetrics(
   const ppoMetrics = ppoRun.summary;
   const hybridMetrics = hybridRun.summary;
 
-  // Ensure we don't divide by zero
+  // Avoid divide-by-zero
   const areaSavedPercent = ppoMetrics.totalBurnedArea > 0
     ? ((ppoMetrics.totalBurnedArea - hybridMetrics.totalBurnedArea) / ppoMetrics.totalBurnedArea) * 100
     : 0;
@@ -275,7 +275,7 @@ export function generateMockRuns(): { ppo: SimulationRun; hybrid: SimulationRun 
   const maxSteps = 200;
   const numDrones = 4;
 
-  // REAL performance ratios from AURORA training experiments
+  // Real performance ratios from AURORA training
   const PPO_SUCCESS_RATE = 0.72; // 72% completion rate (actual)
   const HYBRID_SUCCESS_RATE = 0.87; // 87% completion rate (actual, Qwen 3B)
   const PPO_AVG_RETURN = 34.57; // Actual avg return per episode
@@ -291,7 +291,7 @@ export function generateMockRuns(): { ppo: SimulationRun; hybrid: SimulationRun 
     for (let t = 0; t < maxSteps; t++) {
       const progress = t / maxSteps;
       
-      // Fire spreads faster initially, then stabilizes as drones suppress
+      // Fire spreads faster early, then stabilizes as drones suppress
       const fireGrowthRate = 0.8 - progress * 0.5;
       const burnedThisStep = Math.max(0, 50 * fireGrowthRate * (1 - efficiency * 0.15));
       cumulativeBurned += burnedThisStep;

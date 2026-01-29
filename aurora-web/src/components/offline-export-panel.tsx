@@ -28,7 +28,7 @@ export function OfflineExportPanel() {
 
   const estimateSize = (): string => {
     let size = 0;
-    if (exportConfig.includeModels) size += 250; // Model files
+    if (exportConfig.includeModels) size += 250; // model files
     if (exportConfig.includeSimulationLogs) size += exportConfig.maxLogSize;
     if (exportConfig.includeDocumentation) size += 50;
     if (exportConfig.includeWebDemo) size += 100;

@@ -1,5 +1,5 @@
 """
-Drone agent for wildfire suppression.
+Drone agent that handles movement, sensing, and suppression.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ except ImportError:
 
 
 class DroneAgent:
-    """Individual drone with battery, water, sensors, and movement."""
+    """Drone with battery, water, sensors, and movement."""
 
     ACTIONS = {
         0: "stay",
@@ -41,30 +41,30 @@ class DroneAgent:
         self.cooldown_steps = cooldown_steps
         self._cooldown = 0
         
-        # Battery and resource management
+        # Battery + resource tracking
         self.max_battery = max_battery
         self.battery = max_battery
         self.battery_drain_rate = 1.0  # per step
         self.recharge_rate = 5.0  # per step when at recharge zone
         
-        # Water capacity for fire suppression
+        # Water budget for suppression
         self.max_water = max_water
         self.water = max_water
         self.water_per_suppression = 10.0
         
-        # Sensor and communication capabilities
+        # Sensor + comms
         self.sensor_range = sensor_range
         self.communication_range = communication_range
         self.field_of_view = 3  # 3x3 observation window
         
-        # Agent state and history
+        # State + history
         self.is_active = True
-        self.faults = []  # List of current faults
+        self.faults = []  # current faults
         self.action_history = []
         self.suppression_count = 0
         self.distance_traveled = 0
         
-        # Communication state
+        # Comms state
         self.last_communication = 0
         self.received_messages = []
         self.sent_messages = []
@@ -87,13 +87,13 @@ class DroneAgent:
     def is_at_recharge_zone(self, fire_sim: FireSim) -> bool:
         """Check if drone is at a refill location (road or water)."""
         r, c = self.position
-        return fire_sim.terrain[r, c] in [2, 3]  # Road or water
+        return fire_sim.terrain[r, c] in [2, 3]  # road or water
 
     def can_suppress(self) -> bool:
         """Check if drone can perform suppression action."""
         return (self._cooldown == 0 and 
                 self.water >= self.water_per_suppression and
-                self.battery > 10.0 and  # Need some battery to operate
+                self.battery > 10.0 and  # needs some battery to act
                 self.is_active)
 
     def observe(self, fire_sim: FireSim) -> np.ndarray:
@@ -107,10 +107,10 @@ class DroneAgent:
                 if 0 <= rr < fire_sim.grid_size[0] and 0 <= cc < fire_sim.grid_size[1]:
                     obs[i + 1, j + 1, 0] = fire_sim.terrain[rr, cc]
                     obs[i + 1, j + 1, 1] = fire_sim.fire_state[rr, cc]
-                    obs[i + 1, j + 1, 2] = fire_sim.elevation[rr, cc] / 100.0  # Normalize
+                    obs[i + 1, j + 1, 2] = fire_sim.elevation[rr, cc] / 100.0  # normalize
                     obs[i + 1, j + 1, 3] = fire_sim.fuel_density[rr, cc]
                 
-                # Add agent state to center cell
+                # Put agent state in the center cell
                 if i == 0 and j == 0:
                     obs[i + 1, j + 1, 4] = self.battery_percentage / 100.0
                     obs[i + 1, j + 1, 5] = self.water_percentage / 100.0
@@ -133,7 +133,7 @@ class DroneAgent:
             for dc in range(-self.sensor_range, self.sensor_range + 1):
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < fire_sim.grid_size[0] and 0 <= nc < fire_sim.grid_size[1]:
-                    if fire_sim.fire_state[nr, nc] == 1:  # Burning
+                    if fire_sim.fire_state[nr, nc] == 1:  # burning
                         distance = abs(dr) + abs(dc)  # Manhattan distance
                         scan_data['nearby_fires'].append({
                             'position': (nr, nc),
@@ -141,8 +141,8 @@ class DroneAgent:
                             'intensity': fire_sim.fuel_density[nr, nc]
                         })
                     
-                    # Check for recharge zones
-                    if fire_sim.terrain[nr, nc] in [2, 3]:  # Road or water
+                    # Look for recharge zones
+                    if fire_sim.terrain[nr, nc] in [2, 3]:  # road or water
                         distance = abs(dr) + abs(dc)
                         scan_data['recharge_zones'].append({
                             'position': (nr, nc),
@@ -187,26 +187,26 @@ class DroneAgent:
         # Drain battery
         self.battery = max(0.0, self.battery - self.battery_drain_rate)
         
-        # Recharge if at recharge zone
+        # Recharge if on a refill tile
         if self.is_at_recharge_zone(fire_sim):
             self.battery = min(self.max_battery, self.battery + self.recharge_rate)
             self.water = min(self.max_water, self.water + self.recharge_rate * 0.5)
         
-        # Deactivate if battery is critically low
+        # Deactivate if battery is empty
         if self.battery <= 0:
             self.is_active = False
             self.faults.append('battery_depleted')
 
     def _simulate_faults(self) -> None:
         """Random fault simulation for realism."""
-        # 1% chance per step of developing a fault
+        # 1% chance per step to develop a fault
         if random.random() < 0.01:
             fault_types = ['sensor_malfunction', 'communication_error', 'suppression_system_fault']
             fault = random.choice(fault_types)
             if fault not in self.faults:
                 self.faults.append(fault)
         
-        # 5% chance per step of recovering from a fault
+        # 5% chance per step to recover
         if self.faults and random.random() < 0.05:
             recovered_fault = random.choice(self.faults)
             self.faults.remove(recovered_fault)
@@ -226,11 +226,11 @@ class DroneAgent:
             'scan_data': None
         }
         
-        # Update resources and check for faults
+        # Update resources + faults
         self._update_resources(fire_sim)
         self._simulate_faults()
         
-        # Decrement cooldown at the start of the step
+        # Tick down cooldown
         if self._cooldown > 0:
             self._cooldown -= 1
         
@@ -253,7 +253,7 @@ class DroneAgent:
                 result['distance_moved'] = 1
         elif action == 5:  # suppress
             if self.can_suppress():
-                # Check orthogonally adjacent cells for fire
+                # Check adjacent cells for fire
                 for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                     nr, nc = self.position[0] + dr, self.position[1] + dc
                     if 0 <= nr < fire_sim.grid_size[0] and 0 <= nc < fire_sim.grid_size[1]:
@@ -267,12 +267,12 @@ class DroneAgent:
                             break
         elif action == 6:  # scan
             result['scan_data'] = self.scan_environment(fire_sim)
-            result['battery_used'] = 0.5  # Scanning uses extra battery
+            result['battery_used'] = 0.5  # scan costs extra battery
         elif action == 7:  # communicate
             if other_agents:
                 messages = self.communicate(other_agents, fire_sim)
                 result['messages_sent'] = len(messages)
-                result['battery_used'] = 0.2  # Communication uses some battery
+                result['battery_used'] = 0.2  # comms cost some battery
         
         # Update metrics
         self.distance_traveled += result['distance_moved']

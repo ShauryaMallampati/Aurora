@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate coordinates
+    // Validate coords
     if (body.latitude < -90 || body.latitude > 90 || body.longitude < -180 || body.longitude > 180) {
       return NextResponse.json(
         { error: 'Invalid coordinates' },
@@ -90,12 +90,12 @@ export async function POST(request: NextRequest) {
 
     // Queue both training runs if requested
     if (body.runBothModels) {
-      // In real implementation, this would spawn subprocess jobs
+      // In prod this would spawn subprocess jobs
       response.status = 'running_ppo';
       response.ppoRunId = `ppo_${scenarioId}`;
       response.hybridRunId = `hybrid_${scenarioId}`;
 
-      // TODO: Actually spawn training processes
+      // TODO: spawn training processes
       // For now, just return queued status
     }
 
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Simulated scenario (would be real training job status in production)
+    // Mock scenario (prod would return real job status)
     const response: ScenarioResponse = {
       id: scenarioId,
       status: 'completed',

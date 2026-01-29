@@ -10,7 +10,7 @@ import { PerimeterLayer } from "./PerimeterLayer";
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const LIBRARIES: ("visualization" | "geometry")[] = ["visualization", "geometry"];
 
-const DEFAULT_CENTER = { lat: 36.7783, lng: -119.4179 }; // California
+const DEFAULT_CENTER = { lat: 36.7783, lng: -119.4179 }; // CA
 const DEFAULT_ZOOM = 12;
 
 interface MapStageProps {
@@ -46,7 +46,7 @@ export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
   const [inspectorPos, setInspectorPos] = useState<{ x: number, y: number, lat: number, lng: number } | null>(null);
   const [pinnedInspector, setPinnedInspector] = useState(false);
 
-  // Use comparison runs if in comparison mode, else use regular ticks
+  // Use comparison runs if in comparison mode, else regular ticks
   let displayTicks = ticks;
   if (currentStep !== undefined) {
     if (modelType === 'ppo' && ppoRun) {
@@ -56,7 +56,7 @@ export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
     }
   }
 
-  // Get latest tick or use specified step
+  // Use latest tick or the requested step
   useEffect(() => {
     if (currentStep !== undefined) {
       setCurrentTick(currentStep);
@@ -67,12 +67,12 @@ export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
 
   const tick = displayTicks[currentTick];
 
-  // Handle map click for data inspector
+  // Handle map click for the inspector
   const handleMapClick = (e: google.maps.MapMouseEvent) => {
     if (e.latLng) {
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
-      // Convert to screen coordinates (approximate - would need map.getProjection() for precise)
+      // Convert to screen coords (approx; map.getProjection() needed for exact)
       setInspectorPos({ x: 0, y: 0, lat, lng });
       setPinnedInspector(true);
     }
@@ -84,7 +84,7 @@ export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
       const lat = tick.fireOrigin.lat;
       const lng = tick.fireOrigin.lng;
 
-      // Validate coordinates before setting
+      // Validate coords before setting
       if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
         map.setCenter({ lat, lng });
       }

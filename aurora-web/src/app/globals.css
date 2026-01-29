@@ -26,7 +26,7 @@ body {
   margin: 0;
 }
 
-/* Refined scrollbar */
+/* Clean scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -45,13 +45,13 @@ body {
   background: rgba(255, 255, 255, 0.15);
 }
 
-/* Selection */
+/* Selection color */
 ::selection {
   background: rgba(234, 88, 12, 0.3);
   color: white;
 }
 
-/* Fire/Ember Animations */
+/* Fire/ember animations */
 @keyframes float-up {
   0% {
     transform: translateY(0) translateX(0) scale(1);
@@ -89,7 +89,7 @@ body {
   }
 }
 
-/* Ember particles utility class */
+/* Ember particles helper */
 .ember {
   position: absolute;
   width: 4px;
@@ -109,7 +109,7 @@ body {
 .ember:nth-child(8) { left: 80%; animation-delay: 1.8s; animation-duration: 7.2s; }
 .ember:nth-child(9) { left: 90%; animation-delay: 2.2s; animation-duration: 8.8s; }
 
-/* Gradient text utility */
+/* Gradient text helper */
 .text-gradient-fire {
   background: linear-gradient(135deg, #f97316, #ea580c);
   -webkit-background-clip: text;
@@ -124,7 +124,7 @@ body {
     0 0 40px rgba(234, 88, 12, 0.1);
 }
 
-/* Card hover fire effect */
+/* Card hover glow */
 .card-fire-hover {
   transition: all 0.3s ease;
 }

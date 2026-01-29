@@ -1,6 +1,5 @@
 """
-Run wildfire simulations differently.
-Supports PPO agents, heuristics, and weather logging.
+Run wildfire sims with PPO + heuristics and optional weather logging.
 """
 
 from __future__ import annotations
@@ -87,7 +86,7 @@ class PPOAgent:
             action, _ = self.model.predict(observation, deterministic=True)
             return int(action)
         else:
-            return 0  # Default to stay action
+            return 0  # default to stay (safe noop)
 
 
 def create_agents(agent_configs: List[Dict[str, Any]], fire_sim: FireSim) -> List[DroneAgent]:
@@ -114,37 +113,37 @@ def create_agents(agent_configs: List[Dict[str, Any]], fire_sim: FireSim) -> Lis
 
 def heuristic_action(drone: DroneAgent, sim: FireSim) -> int:
     """Enhanced heuristic action selection."""
-    # If can suppress and adjacent burning cell exists
+    # If we can suppress and a neighbor is burning, do it
     if drone.can_suppress():
         r, c = drone.position
         for dr, dc, action in [(-1, 0, 1), (1, 0, 2), (0, -1, 3), (0, 1, 4)]:
             nr, nc = r + dr, c + dc
             if 0 <= nr < sim.grid_size[0] and 0 <= nc < sim.grid_size[1]:
                 if sim.fire_state[nr, nc] == 1:
-                    return 5  # suppress
+                    return 5  # suppress fire
     
-    # If low battery, move toward recharge zone
+    # Low battery: head to recharge
     if drone.battery_percentage < 30:
         recharge_target = find_nearest_recharge_zone(drone, sim)
         if recharge_target:
             return move_toward_target(drone, recharge_target, sim)
     
-    # If low water, move toward recharge zone
+    # Low water: go refill
     if drone.water_percentage < 20:
         recharge_target = find_nearest_recharge_zone(drone, sim)
         if recharge_target:
             return move_toward_target(drone, recharge_target, sim)
     
-    # Move toward nearest burning cell
+    # Otherwise chase nearest burning cell
     target = find_nearest_burning_target(drone, sim)
     if target:
         return move_toward_target(drone, target, sim)
     
-    # If no clear target, scan environment
+    # No clear target: maybe scan
     if random.random() < 0.1:  # 10% chance to scan
         return 6  # scan
     
-    return 0  # stay
+    return 0  # stay put
 
 
 def find_nearest_burning_target(drone: DroneAgent, sim: FireSim) -> Optional[Tuple[int, int]]:
@@ -161,7 +160,7 @@ def find_nearest_burning_target(drone: DroneAgent, sim: FireSim) -> Optional[Tup
 
 def find_nearest_recharge_zone(drone: DroneAgent, sim: FireSim) -> Optional[Tuple[int, int]]:
     """Find the nearest recharge zone (road or water)."""
-    recharge_coords = np.argwhere(np.isin(sim.terrain, [2, 3]))  # Road or water
+    recharge_coords = np.argwhere(np.isin(sim.terrain, [2, 3]))  # road or water
     if recharge_coords.size == 0:
         return None
     
@@ -176,7 +175,7 @@ def move_toward_target(drone: DroneAgent, target: Tuple[int, int], sim: FireSim)
     tr, tc = target
     r, c = drone.position
     
-    # Determine direction: prefer row movement then column
+    # Move by row first, then column
     if tr < r and r > 0:
         return 1  # up
     if tr > r and r < sim.grid_size[0] - 1:
@@ -186,7 +185,7 @@ def move_toward_target(drone: DroneAgent, target: Tuple[int, int], sim: FireSim)
     if tc > c and c < sim.grid_size[1] - 1:
         return 4  # right
     
-    return 0  # stay
+    return 0  # stay put
 
 
 def run_enhanced_simulation(
@@ -203,10 +202,10 @@ def run_enhanced_simulation(
 ) -> Dict[str, Any]:
     """Run an enhanced wildfire simulation with configurable agents and conditions."""
     
-    # Initialize logger
+    # Spin up logger
     logger = SimulationLogger()
     
-    # Log configuration
+    # Log config
     config = {
         'num_drones': num_drones,
         'steps': steps,
@@ -228,7 +227,7 @@ def run_enhanced_simulation(
             from data.generate_map import main as gen_map_main
         gen_map_main()
     
-    # Initialize enhanced fire simulator
+    # Start fire sim
     sim = FireSim(
         wind_direction=wind_direction,
         wind_intensity=wind_intensity,
@@ -250,12 +249,12 @@ def run_enhanced_simulation(
     
     agents = create_agents(agent_configs, sim)
     
-    # Initialize PPO agent if needed
+    # Load PPO if needed
     ppo_agent = None
     if agent_type in ["ppo", "mixed"]:
         ppo_agent = PPOAgent(ppo_model_path)
     
-    # Track metrics
+    # Track metrics over time
     coverage_history = []
     battery_history = []
     water_history = []
@@ -272,7 +271,7 @@ def run_enhanced_simulation(
         actions = []
         results = []
         
-        # Decide actions for each drone
+        # Pick actions per drone
         for i, drone in enumerate(agents):
             if agent_type == "heuristic":
                 action = heuristic_action(drone, sim)
@@ -283,13 +282,13 @@ def run_enhanced_simulation(
                 else:
                     action = heuristic_action(drone, sim)
             elif agent_type == "mixed":
-                if i < num_drones // 2:  # First half use PPO
+                if i < num_drones // 2:  # first half use PPO
                     if ppo_agent and ppo_agent.is_loaded:
                         obs = drone.observe(sim)
                         action = ppo_agent.predict(obs)
                     else:
                         action = heuristic_action(drone, sim)
-                else:  # Second half use heuristic
+                else:  # second half use heuristic
                     action = heuristic_action(drone, sim)
             else:
                 action = 0
@@ -298,10 +297,10 @@ def run_enhanced_simulation(
             result = drone.act(action, sim, agents)
             results.append(result)
         
-        # Log step data
+        # Log this step
         logger.log_step(step_idx, sim, agents, actions, results)
         
-        # Record metrics
+        # Update metrics
         coverage = sim.get_fire_coverage() * 100.0
         active_drones = sum(1 for d in agents if d.is_active)
         avg_battery = np.mean([d.battery_percentage for d in agents])
@@ -320,7 +319,7 @@ def run_enhanced_simulation(
               f"water {avg_water:.1f}% | "
               f"suppressions {total_suppressions}")
         
-        # Render if required
+        # Render if needed
         if render_every > 0 and (step_idx % render_every == 0 or step_idx == steps - 1):
             output_dir = os.path.join(os.path.dirname(__file__), 'results')
             os.makedirs(output_dir, exist_ok=True)
@@ -330,7 +329,7 @@ def run_enhanced_simulation(
         # Advance fire
         sim.step()
         
-        # Check termination conditions
+        # Stop if done
         if not sim.is_fire_active():
             print("Fire extinguished - simulation complete!")
             break
@@ -344,13 +343,13 @@ def run_enhanced_simulation(
         log_file = logger.save_logs()
         print(f"Simulation logs saved to: {log_file}")
     
-    # Analyze what happened
+    # Analyze run
     analysis = generate_analysis(
         coverage_history, battery_history, water_history, 
         suppression_history, agents, sim, config
     )
     
-    # Save analysis plots
+    # Save plots
     save_analysis_plots(analysis, config)
     
     return analysis
@@ -390,7 +389,7 @@ def save_analysis_plots(analysis: Dict[str, Any], config: Dict[str, Any]) -> Non
     output_dir = os.path.join(os.path.dirname(__file__), 'results')
     os.makedirs(output_dir, exist_ok=True)
     
-    # Create subplots
+    # Set up subplots
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
     agent_type = analysis.get('agent_type', config.get('agent_type', 'unknown'))
     fig.suptitle(f'AURORA Enhanced Simulation Analysis\n{agent_type.title()} Agents', fontsize=16)
@@ -450,7 +449,7 @@ Communications: {metrics['total_communications']}
 def main() -> None:
     """Run enhanced simulation with different configurations."""
     
-    # Configuration options
+    # CLI options
     configs = [
         {
             'name': 'Heuristic Agents',
@@ -481,14 +480,14 @@ def main() -> None:
     for i, config in enumerate(configs):
         print(f"\n{i+1}. {config['name']}")
     
-    # Check if we're in an automated environment (no stdin)
+    # If no stdin, default to heuristic
     import sys
     if not sys.stdin.isatty():
-        # Automated environment - run heuristic by default
+        # No stdin: run heuristic by default
         selected_config = configs[0]
         print(f"\nAutomated mode: Running {selected_config['name']}")
     else:
-        # Interactive environment - get user input
+        # Interactive: ask for input
         try:
             choice = input("\nSelect configuration (1-3) or press Enter for heuristic: ").strip()
             
@@ -499,7 +498,7 @@ def main() -> None:
             else:
                 selected_config = configs[0]
         except (EOFError, KeyboardInterrupt):
-            # Fallback to heuristic if input fails
+            # If input fails, use heuristic
             selected_config = configs[0]
             print(f"\nInput error: Running {selected_config['name']}")
     

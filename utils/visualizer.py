@@ -1,5 +1,5 @@
 """
-Visualization stuff.
+Visualization helpers.
 Draws the fire, drones, and stats.
 """
 
@@ -23,16 +23,16 @@ except ImportError:
 def render(sim: FireSim, drones: Iterable[DroneAgent] = (), step: Optional[int] = None,
            save_path: Optional[str] = None, show_weather: bool = True) -> None:
     """
-    Draws the map state.
-    Red fuel, Green trees, Blue water, you get it.
+    Draw the map state.
+    Red fire, green forest, blue water.
     """
     terrain = sim.terrain
     fire = sim.fire_state
     
-    # Build an enhanced image array where each cell is an RGB triple
+    # Build an image array where each cell is an RGB triple
     img = np.zeros((terrain.shape[0], terrain.shape[1], 3), dtype=np.float32)
     
-    # Base terrain colours with enhanced contrast
+    # Base terrain colors with higher contrast
     # white for empty (0)
     img[terrain == 0] = np.array([0.95, 0.95, 0.95])
     # forest (1) initially green
@@ -42,7 +42,7 @@ def render(sim: FireSim, drones: Iterable[DroneAgent] = (), step: Optional[int] 
     # water (3) blue
     img[terrain == 3] = np.array([0.2, 0.4, 0.8])
     
-    # Overlay fire states with enhanced colors
+    # Overlay fire states with stronger colors
     # burning cells become bright red
     burning = fire == 1
     img[burning] = np.array([1.0, 0.1, 0.1])
@@ -50,11 +50,11 @@ def render(sim: FireSim, drones: Iterable[DroneAgent] = (), step: Optional[int] 
     burnt = fire == 2
     img[burnt] = np.array([0.2, 0.2, 0.2])
     
-    # Create the figure with enhanced size
+    # Create the figure
     fig, ax = plt.subplots(figsize=(10, 8))
     ax.imshow(img, interpolation='none', origin='lower')
     
-    # Plot drones with enhanced information
+    # Plot drones with extra info
     drone_colors = ['yellow', 'orange', 'cyan', 'magenta', 'lime']
     for i, drone in enumerate(drones):
         r, c = drone.position
@@ -103,8 +103,8 @@ def render(sim: FireSim, drones: Iterable[DroneAgent] = (), step: Optional[int] 
     ax.set_xticks([])
     ax.set_yticks([])
     
-    # Enhanced title with weather information
-    title = f"AURORA Enhanced Simulation – Step {step}" if step is not None else "AURORA Enhanced Simulation"
+    # Title with weather info
+    title = f"AURORA Enhanced Simulation - Step {step}" if step is not None else "AURORA Enhanced Simulation"
     if show_weather:
         weather_info = sim.get_weather_info()
         title += f"\nWind: {weather_info['wind_direction']} (intensity: {weather_info['wind_intensity']:.1f}) | "

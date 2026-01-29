@@ -1,4 +1,4 @@
-// Type definitions for AURORA simulation
+// Type defs for AURORA sim
 
 export interface SimulationConfig {
   scenarioId?: string; // e.g. 'dixie-2021', 'random'
@@ -32,13 +32,13 @@ export interface Drone {
 }
 
 export interface Weather {
-  wind_deg?: number; // Legacy
-  wind_mps?: number; // Legacy
+  wind_deg?: number; // legacy
+  wind_mps?: number; // legacy
   windSpeed: number; // m/s
   windDir: number; // degrees
   temp: number; // Celsius
   humidity: number; // 0-1
-  temperature_c?: number; // Legacy
+  temperature_c?: number; // legacy
 }
 
 export interface SimMetrics {

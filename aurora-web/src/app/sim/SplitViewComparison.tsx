@@ -35,13 +35,13 @@ export function SplitViewComparison({ onClose }: SplitViewComparisonProps = {}) 
     successRateDelta: number;
   } | null>(null);
 
-  // Initialize runs on component mount
+  // Init runs on mount
   useEffect(() => {
     const initializeRuns = async () => {
       try {
         setIsLoading(true);
         
-        // Try to load from store first
+        // Try store first
         if (ppoRun && hybridRun) {
           const computed = calculateComparisonMetrics(ppoRun, hybridRun);
           setMetrics(computed);
@@ -53,7 +53,7 @@ export function SplitViewComparison({ onClose }: SplitViewComparisonProps = {}) 
             successRateDelta: computed.successRateDelta,
           });
         } else {
-          // Using fake data for now (real data would come from backend in production)
+          // Mock data for now (backend would supply real data in prod)
           const { ppo, hybrid } = generateMockRuns();
           const computed = calculateComparisonMetrics(ppo, hybrid);
           

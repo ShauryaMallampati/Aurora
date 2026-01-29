@@ -2,21 +2,21 @@
 
 **Project Abstract (250 words)**
 
-## Research Question
-Can Large Language Models augment Proximal Policy Optimization agents to achieve superior wildfire containment strategies through strategic guidance, particularly on complex scenarios?
+## Research question
+Can LLMs give PPO a real strategic boost on tough wildfire scenarios (not just easy wins)?
 
 ## Procedures
-We trained three reinforcement learning models on 116,337 real historical wildfires from the InterAgency Fire Perimeter database: (1) a PPO baseline with no LLM, (2) PPO augmented with Qwen 2.5-3B LLM providing guidance every 50 steps, and (3) PPO with Qwen 2.5-7B. The LLM analyzes fire state, weather (NOAA data), and terrain (USGS elevation) to suggest priority suppression zones and drone assignments. We trained across 4 random seeds with identical environments to ensure reproducibility.
+We trained three RL setups on 116,337 real historical fires from the InterAgency Fire Perimeter database: (1) PPO baseline (no LLM), (2) PPO + Qwen 2.5-3B guidance every 50 steps, and (3) PPO + Qwen 2.5-7B. The LLM reads fire state, NOAA weather, and USGS terrain to suggest priority suppression zones and drone assignments. All runs used four random seeds with identical environments for reproducibility.
 
 ## Data
-We analyzed 53,055 complete episodes across all models and seeds. PPO baseline achieved a final return of 34.57, while the Qwen 3B hybrid model achieved 41.84. All data comes from actual training runs with no synthetic fallbacks.
+We analyzed 53,055 completed episodes across models and seeds. PPO baseline achieved a final return of 34.57, while the Qwen 3B hybrid reached 41.84. All metrics are from real training runs (no synthetic fallbacks).
 
-## Results & Interpretation
-The hybrid model achieved **21.03% improvement** over PPO baseline. Critically, this improvement is selective: easy scenarios showed 0% improvement (PPO already optimal at 42+), while hard scenarios showed 49.86% improvement. This selectivity proves genuine strategic reasoning rather than overfitting. Seed difficulties emerged naturally from training variance, not engineered environment manipulation, confirmed by identical fire configurations (difference = 0.00048 in coverage).
+## Results & interpretation
+The hybrid model improved **21.03%** over PPO baseline. Crucially, the gains are selective: easy scenarios showed 0% improvement (PPO already optimal at 42+), while hard scenarios improved **49.86%**. That pattern points to real strategic reasoning rather than overfitting. Seed difficulty differences emerged from training variance, not from engineered environments, verified by near-identical fire configurations (coverage difference = 0.00048).
 
-## Conclusions & Applications
-LLM-augmented RL successfully solves hard wildfire scenarios that PPO alone cannot. This hybrid approach demonstrates that strategic AI reasoning enhances autonomous agents on genuinely difficult real-world problems. Applications include emergency response automation, disaster relief coordination, and other complex sequential decision-making domains requiring both learning and strategic planning.
+## Conclusions & applications
+LLM-augmented RL handles hard wildfire scenarios that PPO alone struggles with. This hybrid approach suggests that strategic AI guidance can materially improve autonomous response systems in real-world, high-stakes settings. Potential applications include emergency response automation, disaster relief coordination, and other sequential decision-making domains where both learning and planning matter.
 
 ---
 
-**Word Count: 247**
+**Word Count: 248**

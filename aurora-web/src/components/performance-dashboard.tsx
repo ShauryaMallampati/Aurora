@@ -153,11 +153,11 @@ export function PerformanceDashboard() {
   const getModelColor = (model: string) => {
     switch (model) {
       case 'PPO':
-        return '#3b82f6'; // Blue
+        return '#3b82f6'; // blue
       case 'Hybrid':
-        return '#10b981'; // Green
+        return '#10b981'; // green
       case 'Baseline':
-        return '#6b7280'; // Gray
+        return '#6b7280'; // gray
       default:
         return '#999';
     }

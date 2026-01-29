@@ -43,7 +43,7 @@ export function ControlBar({ onToggleSplitView, onOpenFireCreator }: ControlBarP
 
   const [stream, setStream] = useState<SimulationStream | null>(null);
   
-  // Configuration state
+  // Config state
   const [model, setModel] = useState<'ppo' | 'hybrid'>('hybrid');
   const [numDrones, setNumDrones] = useState(3);
   const [llmCadence, setLlmCadence] = useState(50);
@@ -53,7 +53,7 @@ export function ControlBar({ onToggleSplitView, onOpenFireCreator }: ControlBarP
   const [showSettings, setShowSettings] = useState(false);
   const [fireScenario, setFireScenario] = useState<string>('random');
 
-  // Top 100 most disastrous fires from your 116k InterAgency dataset
+  // Top disasters from the 116k InterAgency dataset
   const realFireScenarios = [
     { id: 'random', name: 'Random Historical Fire', year: '', acres: 0, location: 'Nationwide', lat: 0, lng: 0, cost: 0 },
     // Top 10 Catastrophic Fires (1M+ acres)
@@ -115,7 +115,7 @@ export function ControlBar({ onToggleSplitView, onOpenFireCreator }: ControlBarP
     try {
       addLog('Starting simulation...');
       
-      // Get selected fire scenario data
+      // Grab selected fire scenario data
       const selectedFire = realFireScenarios.find(f => f.id === fireScenario);
       
       const config: SimulationConfig = {
@@ -136,13 +136,13 @@ export function ControlBar({ onToggleSplitView, onOpenFireCreator }: ControlBarP
         addLog(`🔥 Fire size: ${selectedFire.acres.toLocaleString()} acres`);
         addLog(`💰 Historical cost: $${(selectedFire.cost / 1000000).toFixed(1)}M`);
         
-        // Calculate estimated cost with current drone config
+        // Estimate cost with current drone config
         const baseCostPerAcre = selectedFire.cost / selectedFire.acres;
         const droneOperatingCost = numDrones * 5000; // $5k per drone per day
         const estimatedDailyCost = baseCostPerAcre * selectedFire.acres / 30 + droneOperatingCost;
         addLog(`💵 Estimated daily cost with ${numDrones} drones: $${(estimatedDailyCost / 1000000).toFixed(2)}M`);
         
-        // Emit event to move map (MapStage will listen to this)
+        // Emit event to move map (MapStage listens for this)
         window.dispatchEvent(new CustomEvent('moveMapToFire', {
           detail: { lat: selectedFire.lat, lng: selectedFire.lng, zoom: 10 }
         }));
@@ -151,7 +151,7 @@ export function ControlBar({ onToggleSplitView, onOpenFireCreator }: ControlBarP
       // Use mock stream for demo
       const mockStream = new SimulationStream('/api/sim/stream/mock', true);
       
-      // Set config BEFORE starting stream (critical!)
+      // Set config before starting stream (important)
       mockStream.setConfig(config);
       
       // Set playback speed
@@ -176,11 +176,11 @@ export function ControlBar({ onToggleSplitView, onOpenFireCreator }: ControlBarP
           const selectedFire = realFireScenarios.find(f => f.id === fireScenario);
           const scenarioName = selectedFire?.name || 'Random Historical Fire';
           
-          // Calculate metrics based on real training data ratios
-          // Hybrid achieves ~21% better return than PPO baseline
-          const baseReturn = model === 'hybrid' ? 41.84 : 34.57; // From AURORA training
-          const completionRate = model === 'hybrid' ? 0.87 : 0.72; // Real success rates
-          const returnValue = baseReturn * (1 + (Math.random() - 0.5) * 0.1); // ±5% variance
+          // Compute metrics based on real training ratios
+          // Hybrid is ~21% better return vs PPO baseline
+          const baseReturn = model === 'hybrid' ? 41.84 : 34.57; // from AURORA training
+          const completionRate = model === 'hybrid' ? 0.87 : 0.72; // real success rates
+          const returnValue = baseReturn * (1 + (Math.random() - 0.5) * 0.1); // +/- 5% variance
           
           try {
             await saveRun({

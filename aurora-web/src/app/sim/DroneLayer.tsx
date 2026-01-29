@@ -14,12 +14,12 @@ export function DroneLayer({ tick }: DroneLayerProps) {
   const [selectedDrone, setSelectedDrone] = useState<number | null>(null);
   const [hoveredDrone, setHoveredDrone] = useState<number | null>(null);
 
-  // Group drones by proximity for large swarms (to prevent marker overlap)
+  // Group drones by proximity for big swarms (avoid overlap)
   const droneGroups = tick.drones.length > 20 ? groupDronesByProximity(tick.drones) : null;
   
   const dronesToRender = droneGroups ? Object.values(droneGroups).map(group => group[0]) : tick.drones;
 
-  // Generate local conditions for selected drone (mock data - replace with real obs)
+  // Mock local conditions (swap in real obs later)
   const getLocalConditions = (drone: Drone) => {
     return {
       windSpeed: 12.5 + Math.random() * 5,
@@ -31,7 +31,7 @@ export function DroneLayer({ tick }: DroneLayerProps) {
     };
   };
 
-  // Get action reasoning (mock - replace with actual LLM guidance or model attribution)
+  // Mock action reasoning (swap in LLM/model attribution later)
   const getActionReasoning = (drone: Drone) => {
     const reasons: Record<string, string> = {
       drop: "High fire intensity detected nearby. Water deployment prioritized.",
@@ -43,7 +43,7 @@ export function DroneLayer({ tick }: DroneLayerProps) {
     return reasons[drone.action] || "Executing optimal action based on policy.";
   };
 
-  // Get top feature attributions (mock - replace with actual SHAP/attention weights)
+  // Mock feature attributions (swap in SHAP/attention later)
   const getFeatureAttributions = (drone: Drone) => {
     const features = [
       { name: "Nearby Fire Intensity", value: 0.42, positive: true },
@@ -52,7 +52,7 @@ export function DroneLayer({ tick }: DroneLayerProps) {
       { name: "Distance to Base", value: -0.15, positive: false },
       { name: "Slope Gradient", value: 0.12, positive: true },
     ];
-    return features.slice(0, 3); // Top 3
+    return features.slice(0, 3); // top 3
   };
 
   return (
@@ -62,7 +62,7 @@ export function DroneLayer({ tick }: DroneLayerProps) {
         const reasoning = getActionReasoning(drone);
         const features = getFeatureAttributions(drone);
         
-        // Find drones near this marker if grouped
+        // Find nearby drones if grouped
         const nearbyDrones = droneGroups ? droneGroups[`${drone.lat.toFixed(4)}_${drone.lng.toFixed(4)}`] : [drone];
         const count = nearbyDrones?.length || 1;
 

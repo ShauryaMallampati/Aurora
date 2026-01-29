@@ -46,23 +46,23 @@ export function WildfireCostComparison() {
 
     setRealData(realWildfireMetrics);
 
-    // Calculate projected AURORA vs Traditional for medium-sized fire (1000 acres)
+    // Estimate AURORA vs Traditional for a 1000-acre fire
     const traditionalCostPerAcre = 1175; // NIFC 2023 average
-    const aurortaCostPerAcre = 685; // Projected: 42% reduction with optimized response
+    const aurortaCostPerAcre = 685; // projected: 42% reduction with optimized response
     const fireSize = 1000; // acres
 
     const comparison: CostComparisonData = {
       scenario: "1000-acre wildfire",
       traditional: {
         cost: traditionalCostPerAcre * fireSize,
-        time: 28, // avg response time minutes
+        time: 28, // avg response time (min)
         acresSaved: 200,
         costPerAcre: traditionalCostPerAcre,
       },
       aurora: {
         cost: aurortaCostPerAcre * fireSize,
-        time: 4, // AURORA response time (AI-controlled drones)
-        acresSaved: 550, // Better early containment
+        time: 4, // AURORA response time (AI drones)
+        acresSaved: 550, // better early containment
         costPerAcre: aurortaCostPerAcre,
       },
     };

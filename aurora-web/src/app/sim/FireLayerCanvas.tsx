@@ -63,12 +63,12 @@ export function FireLayerCanvas({ tick, map }: FireLayerCanvasProps) {
             }
           }
         } catch (error) {
-          // Canvas or parentNode doesn't exist, ignore
+          // Canvas or parentNode missing, ignore
         }
       }
     }
 
-    // Calculate bounds (10km x 10km around fire origin)
+    // Bounds: 10km x 10km around fire origin
     const center = new google.maps.LatLng(tick.fireOrigin.lat, tick.fireOrigin.lng);
     const latOffset = 0.045; // ~5km
     const lngOffset = 0.045;
@@ -80,7 +80,7 @@ export function FireLayerCanvas({ tick, map }: FireLayerCanvasProps) {
     // Render fire to canvas
     renderFireGrid(canvasRef.current, gridData);
 
-    // Create and add overlay
+    // Create + add overlay
     const overlay = new FireOverlay(canvasRef.current, bounds);
     overlay.setMap(map);
     overlayRef.current = overlay;
@@ -131,7 +131,7 @@ function renderFireGrid(canvas: HTMLCanvasElement, grid: number[][]) {
   // Clear canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // First pass: render glow effect for high-intensity fires
+  // Pass 1: glow for high-intensity fires
   ctx.filter = 'blur(2px)';
   for (let i = 0; i < height; i++) {
     for (let j = 0; j < width; j++) {
@@ -145,11 +145,11 @@ function renderFireGrid(canvas: HTMLCanvasElement, grid: number[][]) {
     }
   }
   
-  // Reset filter for sharp rendering
+  // Reset filter for sharp render
   ctx.filter = 'none';
   ctx.globalAlpha = 1.0;
 
-  // Second pass: render cells with full intensity
+  // Pass 2: full-intensity cells
   for (let i = 0; i < height; i++) {
     for (let j = 0; j < width; j++) {
       const intensity = grid[i][j];

@@ -32,12 +32,12 @@ export function FireCreator({ onClose, onCreateFire, onStartSimulation }: FireCr
   const [waterAmount, setWaterAmount] = useState<number>(500);
   const [isGeocoding, setIsGeocoding] = useState(false);
 
-  // Calculate estimated cost
+  // Estimate cost
   const calculateCost = () => {
-    const baseCost = 50000; // Base deployment cost
+    const baseCost = 50000; // base deployment cost
     const droneCost = numDrones * 15000; // $15k per drone
     const waterCost = waterAmount * numDrones * 0.5; // $0.50 per gallon
-    const difficultyCost = strength * windFactor * 2000; // Difficulty multiplier
+    const difficultyCost = strength * windFactor * 2000; // difficulty multiplier
     return Math.round(baseCost + droneCost + waterCost + difficultyCost);
   };
 
@@ -46,7 +46,7 @@ export function FireCreator({ onClose, onCreateFire, onStartSimulation }: FireCr
     
     setIsGeocoding(true);
     try {
-      // Using Nominatim (OpenStreetMap) for geocoding - free and no API key needed
+      // Use Nominatim (OpenStreetMap) for geocoding - free, no API key
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
         {

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-// Fake run data - would load actual results in production
+// Mock run data - prod would load real results
 const MOCK_RUNS = {
   ppo: {
     runId: 'ppo_camp-fire-2018_42',
@@ -105,12 +105,12 @@ export async function GET(request: NextRequest) {
     const scenario = searchParams.get('scenario');
     const seed = searchParams.get('seed') ? parseInt(searchParams.get('seed')!) : undefined;
 
-    // In production, find matching pair from database
+    // In prod, find matching pair from DB
     // For now, return mock data
     const ppo = MOCK_RUNS.ppo;
     const hybrid = MOCK_RUNS.hybrid;
 
-    // Verify they match scenario and seed if specified
+    // Verify scenario + seed if specified
     if (scenario && (ppo.config.scenarioId !== scenario || hybrid.config.scenarioId !== scenario)) {
       return NextResponse.json(
         { error: 'No matching runs found for scenario' },

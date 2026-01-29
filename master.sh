@@ -1,7 +1,6 @@
 #!/bin/zsh
 
-# Master Control.
-# Train, validate, run.
+# Master control: setup, train, validate, run.
 
 usage() {
     echo "Usage: $0 {setup|train|validate|run} [options]"
@@ -39,7 +38,7 @@ case "$mode" in
         echo "AURORA Setup: Installing dependencies and running quick validation"
         echo "============================================================"
         
-        # Write consolidated requirements to a temporary file
+        # Write consolidated requirements to a temp file
         REQUIREMENTS_FILE="/tmp/merged_requirements.txt"
         cat > "$REQUIREMENTS_FILE" << 'EOF'
 # Consolidated AURORA requirements (merged from requirements files).
@@ -109,24 +108,23 @@ EOF
         echo "============================================================"
         echo ""
         
-        # Ensure HuggingFace token is set in environment (do NOT hardcode API keys)
+        # Ensure HuggingFace token is set (do NOT hardcode API keys)
         if [ -z "$HF_TOKEN" ]; then
             echo "⚠️  HF_TOKEN environment variable not set. If you need to use gated models, export HF_TOKEN before running this script."
         else
             echo "Using HF_TOKEN from environment"
         fi
         
-        # Create logs directory if it doesn't exist
+        # Make logs dir if missing
         mkdir -p logs
         
-        # Pass all arguments to train_hybrid.py
-        # This supports --phase, --timesteps, --n_envs, etc.
+        # Pass all args to train_hybrid.py (--phase, --timesteps, --n_envs, etc.)
         echo "Starting training with arguments: $@"
         echo "Log file: logs/hybrid_training.log"
         echo ""
         
-    # Stream output to both console and log file so interactive per-step updates are visible
-    python train_hybrid.py "$@" 2>&1 | tee -a logs/hybrid_training.log
+        # Stream output to console + log file
+        python train_hybrid.py "$@" 2>&1 | tee -a logs/hybrid_training.log
         
         if [ $? -eq 0 ]; then
             echo ""
@@ -145,17 +143,13 @@ EOF
         echo "============================================================"
         echo "Running validation on trained model..."
         
-        if [ -x "./validate_strict_mode.py" ]; then
-            python validate_strict_mode.py "$@"
+        if [ -f "./validate.py" ]; then
+            python validate.py "$@"
+        elif [ -f "./preflight.py" ]; then
+            python preflight.py "$@"
         else
-            echo "validate_strict_mode.py not found"
-            echo "Using quick_validate.sh instead..."
-            if [ -x "./quick_validate.sh" ]; then
-                ./quick_validate.sh
-            else
-                echo "❌ No validation script found."
-                exit 1
-            fi
+            echo "❌ No validation script found."
+            exit 1
         fi
         ;;
     run)

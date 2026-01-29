@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const modelType = searchParams.get('model'); // 'ppo' | 'hybrid'
     const scenario = searchParams.get('scenario');
 
-    // Using fake data for now (would load from results/aurora_runs.json in production)
+    // Mock data for now (prod would load from results/aurora_runs.json)
     const mockRuns = [
       {
         runId: 'ppo_camp-fire-2018_42',

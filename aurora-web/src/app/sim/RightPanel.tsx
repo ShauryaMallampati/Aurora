@@ -6,7 +6,7 @@ import { TelemetryTab } from "./tabs/TelemetryTab";
 import { GuidanceTab } from "./tabs/GuidanceTab";
 import { ChartsTab } from "./tabs/ChartsTab";
 import { LogsTab } from "./tabs/LogsTab";
-// WildfireCostComparison removed - moved to separate page
+// WildfireCostComparison moved to its own page
 
 const TABS = [
   { id: "metrics", label: "Metrics" },

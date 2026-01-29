@@ -25,7 +25,7 @@ export function ChartsTab() {
     );
   }
 
-  // Prepare chart data
+  // Prep chart data
   const chartData = ticks.map((tick) => ({
     t: tick.t,
     burnedArea: tick.metrics.burnedArea,

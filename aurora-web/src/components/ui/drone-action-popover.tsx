@@ -21,10 +21,10 @@ interface DroneActionPopoverProps {
 }
 
 /**
- * DroneActionPopover Component
- * 
- * Displays last 3 drone actions with LLM rationales when drone is hovered.
- * Color-coded by action type:
+ * DroneActionPopover
+ *
+ * Shows the last 3 drone actions with LLM rationale on hover.
+ * Color key:
  * - 🔴 Red: suppress (high fire intensity)
  * - 🟡 Yellow: scout (exploring, gathering info)
  * - 🟢 Green: move (repositioning)

@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     const experimentId = generateExperimentId();
     const startTime = Date.now();
 
-    // Vercel / Cloud Environment Check
+    // Vercel/cloud environment check
     if (process.env.VERCEL) {
       return NextResponse.json({
         id: experimentId,
@@ -91,8 +91,8 @@ export async function POST(request: NextRequest) {
     const scriptPath = path.join(projectRoot, 'train_manager.py');
     const outputDir = path.join(projectRoot, 'results', `exp_${experimentId}`);
 
-    // Ensure output directory exists
-    // Only attempt if not on Vercel (redundant check but safe)
+    // Ensure output dir exists
+    // Only attempt if not on Vercel (extra safety)
     if (!fs.existsSync(outputDir)) {
       try {
         fs.mkdirSync(outputDir, { recursive: true });
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     // Spawn training process
     const trainProcess = spawn(pythonPath, args, {
       cwd: projectRoot,
-      detached: false, // Don't detach - we need to monitor it
+      detached: false, // don't detach; we need to monitor it
     });
 
     // Store experiment metadata
@@ -276,7 +276,7 @@ function parseMetrics(experimentId: string, output: string): void {
 
     experiment.metrics.push(metric);
 
-    // Keep only last 1000 metrics in memory
+    // Keep last 1000 metrics in memory
     if (experiment.metrics.length > 1000) {
       experiment.metrics = experiment.metrics.slice(-1000);
     }
@@ -299,7 +299,7 @@ function loadMetricsFromDisk(resultsPath: string): TrainingMetrics[] {
   return [];
 }
 
-// Simulates training output for testing - matches actual Phase C curves
+// Simulated training output for testing (matches Phase C curves)
 function generateMockExperimentMetrics(): TrainingMetrics[] {
   const metrics: TrainingMetrics[] = [];
   let episodeReturn = 10;
@@ -308,11 +308,11 @@ function generateMockExperimentMetrics(): TrainingMetrics[] {
   let llmLatency = 50;
 
   for (let step = 0; step <= 50000; step += 1000) {
-    // Realistic training behavior: agent gets better, less wasted steps, etc
-    episodeReturn += Math.random() * 5 - 0.5; // Gradually improving
-    completionRate = Math.min(0.95, completionRate + Math.random() * 0.01); // Success rate goes up
-    idleSteps = Math.max(50, idleSteps - Math.random() * 20); // Gets more efficient
-    llmLatency += (Math.random() - 0.5) * 2; // Some noise but stable
+    // Realistic-ish training behavior: better returns, fewer wasted steps
+    episodeReturn += Math.random() * 5 - 0.5; // gradually improves
+    completionRate = Math.min(0.95, completionRate + Math.random() * 0.01); // success rate goes up
+    idleSteps = Math.max(50, idleSteps - Math.random() * 20); // more efficient over time
+    llmLatency += (Math.random() - 0.5) * 2; // some noise but stable
     metrics.push({
       step,
       episode_return: Math.max(0, episodeReturn),

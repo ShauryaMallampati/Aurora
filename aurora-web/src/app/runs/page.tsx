@@ -6,7 +6,7 @@ import { History, Play, Pin, PinOff, Search, Filter, Download, Trash2, RefreshCw
 import { Navigation } from "@/shared/Navigation";
 import { supabase, saveRun, getRuns, updateRunPin, deleteRun } from "@/lib/supabase";
 
-// Real training metrics from AURORA experiments
+// Real training metrics from AURORA runs
 const REAL_METRICS = {
   ppo: { avgReturn: 34.57, avgCompletion: 0.72 },
   hybrid_3b: { avgReturn: 41.84, avgCompletion: 0.87 },

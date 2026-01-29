@@ -8,7 +8,7 @@ export function LogsTab() {
   const logs = useSimulationStore((state) => state.logs);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom on new logs
+  // Auto-scroll on new logs
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);

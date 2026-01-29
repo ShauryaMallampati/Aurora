@@ -47,7 +47,7 @@ export function ExperimentLabDashboard() {
   const [realMetricsLoaded, setRealMetricsLoaded] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
 
-  // Fetch real training metrics on component mount
+  // Fetch real training metrics on mount
   useEffect(() => {
     const fetchRealMetrics = async () => {
       try {
@@ -83,7 +83,7 @@ export function ExperimentLabDashboard() {
     fetchRealMetrics();
   }, [selectedMode]);
 
-  // Calculate statistics from real training data
+  // Calculate stats from real training data
   const stats = {
     avgReturn: trainingData.length > 0 ? (trainingData.reduce((sum, m) => sum + m.episode_return, 0) / trainingData.length).toFixed(2) : '0',
     avgCompletion: trainingData.length > 0 ? (trainingData.reduce((sum, m) => sum + m.completion_rate, 0) / trainingData.length * 100).toFixed(1) : '0',
@@ -246,7 +246,7 @@ export function ExperimentLabDashboard() {
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart
-                data={trainingData.slice(-20)} // Last 20 points for clarity
+                data={trainingData.slice(-20)} // last 20 points for clarity
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="step" stroke="#94a3b8" tick={{ fontSize: 12 }} />
