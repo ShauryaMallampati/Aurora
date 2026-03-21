@@ -1,10 +1,10 @@
 "use client";
 
-import { Marker, InfoWindow } from "@react-google-maps/api";
-import { useState } from "react";
+import { Circle, InfoWindow, Marker } from "@react-google-maps/api";
+import { Fragment, useState } from "react";
 import type { TelemetryTick, Drone } from "@/shared/types";
 import { Wind, Mountain, Droplets, Flame, TrendingUp, Brain } from "lucide-react";
-import { DroneActionPopover, type DroneAction } from "@/components/ui/drone-action-popover";
+import type { DroneAction } from "@/components/ui/drone-action-popover";
 
 interface DroneLayerProps {
   tick: TelemetryTick;
@@ -25,35 +25,53 @@ export function DroneLayer({ tick }: DroneLayerProps) {
         const conditions = getDerivedConditions(drone, tick);
         const reasoning = getActionReasoning(drone, tick);
         const features = getFeatureSignals(drone, tick);
-        const derivedActions = buildDerivedActions(drone, tick);
-        
+
         // Find nearby drones if grouped
         const nearbyDrones = droneGroups ? droneGroups[`${drone.lat.toFixed(4)}_${drone.lng.toFixed(4)}`] : [drone];
         const count = nearbyDrones?.length || 1;
 
         return (
-          <div key={drone.id}>
-            {/* Popover Container - Outside Marker */}
-            <DroneActionPopover
-              droneId={String(drone.id)}
-              lat={drone.lat}
-              lng={drone.lng}
-              actions={derivedActions}
-              isOpen={hoveredDrone === drone.id}
-              onHover={(isOpen) => setHoveredDrone(isOpen ? drone.id : null)}
-            />
-            
-            {/* Marker */}
+          <Fragment key={drone.id}>
+            {drone.action === "drop" ? (
+              <Circle
+                center={{ lat: drone.lat, lng: drone.lng }}
+                radius={190 + (count - 1) * 45}
+                options={{
+                  fillColor: "#22d3ee",
+                  fillOpacity: hoveredDrone === drone.id ? 0.28 : 0.18,
+                  strokeColor: "#0891b2",
+                  strokeOpacity: 0.85,
+                  strokeWeight: 1.5,
+                  clickable: false,
+                }}
+              />
+            ) : null}
+
+            {drone.action === "scout" ? (
+              <Circle
+                center={{ lat: drone.lat, lng: drone.lng }}
+                radius={125 + (count - 1) * 35}
+                options={{
+                  fillColor: "#c084fc",
+                  fillOpacity: hoveredDrone === drone.id ? 0.18 : 0.1,
+                  strokeColor: "#9333ea",
+                  strokeOpacity: 0.72,
+                  strokeWeight: 1.2,
+                  clickable: false,
+                }}
+              />
+            ) : null}
+
             <Marker
               key={`marker_${drone.id}`}
               position={{ lat: drone.lat, lng: drone.lng }}
               icon={{
                 path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
                 fillColor: getDroneColor(drone.action),
-                fillOpacity: 0.9,
-                strokeColor: hoveredDrone === drone.id ? "#ffeb3b" : "#ffffff",
-                strokeWeight: count > 1 ? 3 : 2,
-                scale: count > 1 ? 8 : 6,
+                fillOpacity: 1,
+                strokeColor: hoveredDrone === drone.id ? "#f8fafc" : "#0f172a",
+                strokeWeight: hoveredDrone === drone.id ? 3 : count > 1 ? 2.5 : 2,
+                scale: hoveredDrone === drone.id ? 9 : count > 1 ? 8 : 7,
                 rotation: drone.heading,
               }}
               label={count > 1 ? {
@@ -183,7 +201,7 @@ export function DroneLayer({ tick }: DroneLayerProps) {
               </InfoWindow>
             )}
             </Marker>
-          </div>
+          </Fragment>
         );
       })}
     </>
@@ -193,7 +211,7 @@ export function DroneLayer({ tick }: DroneLayerProps) {
 function getDroneColor(action: string): string {
   switch (action) {
     case "drop":
-      return "#06b6d4"; // cyan
+      return "#0ea5e9"; // bright blue
     case "scout":
       return "#a855f7"; // purple
     case "recharge":

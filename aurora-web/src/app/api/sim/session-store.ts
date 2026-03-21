@@ -115,14 +115,16 @@ export function buildTick(session: SimSession, step: number): TelemetryTick {
   const initialRadius = scenario.initialRadius;
   const windResistance = 1 + weather.windSpeed / 18;
   const humidityModifier = 1 - weather.humidity * 0.35;
-  const suppressionRate = (0.12 * (numDrones / 3) * Math.max(0.6, humidityModifier)) / windResistance;
+  const suppressionRate = (0.18 * (numDrones / 3) * Math.max(0.6, humidityModifier)) / windResistance;
+  const fireRadius = Math.max(0, initialRadius - step * suppressionRate);
+  const normalizedRadius = initialRadius > 0 ? fireRadius / initialRadius : 0;
+  const intensityScale = Math.max(0, normalizedRadius ** 0.9);
 
   for (let y = 0; y < gridSize; y++) {
     const row: number[] = [];
     for (let x = 0; x < gridSize; x++) {
       const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
-      const fireRadius = Math.max(4, initialRadius - step * suppressionRate);
-      const intensity = Math.max(0, 1 - dist / fireRadius);
+      const intensity = fireRadius > 0 ? Math.max(0, 1 - dist / fireRadius) * intensityScale : 0;
       const noise = Math.sin(x * 0.5 + step * 0.1) * Math.cos(y * 0.5 + step * 0.1) * 0.15;
 
       row.push(dist < fireRadius && intensity > 0 ? Math.min(1, Math.max(0, intensity + noise)) : 0);
@@ -139,12 +141,19 @@ export function buildTick(session: SimSession, step: number): TelemetryTick {
         (111 * Math.cos((fireOrigin.lat * Math.PI) / 180)),
     battery: Math.max(0.2, 1 - step / maxSteps),
     water: Math.max(0, 0.8 - (step / maxSteps) * 1.2),
-    action: ['drop', 'scout', 'idle'][index % 3],
+    action:
+      fireRadius <= 1
+        ? 'idle'
+        : fireRadius <= initialRadius * 0.3
+          ? ['drop', 'scout', 'idle', 'move'][index % 4]
+          : ['drop', 'scout', 'drop', 'idle'][index % 4],
     heading: (step * 3 + index * 120) % 360,
   }));
 
-  const burningCells = fireGrid.flat().filter((value) => value > 0.3).length;
+  const burningCells = fireGrid.flat().filter((value) => value > 0.12).length;
   const totalCells = gridSize * gridSize;
+  const containment = Math.min(1, Math.max(0, 1 - normalizedRadius));
+  const waterDropped = step * numDrones * 1.5;
 
   return {
     t: step,
@@ -154,9 +163,9 @@ export function buildTick(session: SimSession, step: number): TelemetryTick {
     metrics: {
       burnedArea: (burningCells / totalCells) * 100,
       firePerimeter: Math.sqrt(burningCells) * 0.1,
-      containment: Math.min(1, step / Math.max(40, initialRadius * windResistance * 4)),
+      containment,
       avgIntensity: fireGrid.flat().reduce((sum, value) => sum + value, 0) / totalCells,
-      waterDropped: step * numDrones * 1.5,
+      waterDropped,
     },
     events: step % 10 === 0
       ? [

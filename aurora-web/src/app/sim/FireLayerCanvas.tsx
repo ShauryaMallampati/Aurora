@@ -22,11 +22,17 @@ export function FireLayerCanvas({ tick, map }: FireLayerCanvasProps) {
       return;
     }
 
+    const activeBounds = getActiveFireBounds(gridData);
+    if (!activeBounds) {
+      return;
+    }
+
     const canvas = document.createElement("canvas");
     canvas.width = 512;
     canvas.height = 512;
-    canvas.style.opacity = "0.7";
+    canvas.style.opacity = "0.9";
     canvas.style.pointerEvents = "none";
+    canvas.style.mixBlendMode = "multiply";
     canvasRef.current = canvas;
 
     class FireOverlay extends google.maps.OverlayView {
@@ -74,14 +80,20 @@ export function FireLayerCanvas({ tick, map }: FireLayerCanvasProps) {
     }
 
     const center = new google.maps.LatLng(tick.fireOrigin.lat, tick.fireOrigin.lng);
-    const latOffset = 0.045;
-    const lngOffset = 0.045;
+    const latSpan = 0.09;
+    const lngSpan = 0.09;
+    const latPerCell = latSpan / gridData.length;
+    const lngPerCell = lngSpan / (gridData[0]?.length || 1);
+    const north = center.lat() + latSpan / 2 - activeBounds.minY * latPerCell;
+    const south = center.lat() + latSpan / 2 - (activeBounds.maxY + 1) * latPerCell;
+    const west = center.lng() - lngSpan / 2 + activeBounds.minX * lngPerCell;
+    const east = center.lng() - lngSpan / 2 + (activeBounds.maxX + 1) * lngPerCell;
     const bounds = new google.maps.LatLngBounds(
-      new google.maps.LatLng(center.lat() - latOffset, center.lng() - lngOffset),
-      new google.maps.LatLng(center.lat() + latOffset, center.lng() + lngOffset),
+      new google.maps.LatLng(south, west),
+      new google.maps.LatLng(north, east),
     );
 
-    renderFireGrid(canvas, gridData);
+    renderFireGrid(canvas, gridData, activeBounds);
 
     const overlay = new FireOverlay(canvas, bounds);
     overlay.setMap(map);
@@ -106,14 +118,18 @@ function parseFireGrid(base64: string): number[][] | null {
   }
 }
 
-function renderFireGrid(canvas: HTMLCanvasElement, grid: number[][]) {
+function renderFireGrid(
+  canvas: HTMLCanvasElement,
+  grid: number[][],
+  bounds: { minX: number; maxX: number; minY: number; maxY: number },
+) {
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     return;
   }
 
-  const height = grid.length;
-  const width = grid[0]?.length || 0;
+  const height = bounds.maxY - bounds.minY + 1;
+  const width = bounds.maxX - bounds.minX + 1;
   if (!height || !width) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     return;
@@ -124,14 +140,16 @@ function renderFireGrid(canvas: HTMLCanvasElement, grid: number[][]) {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  ctx.filter = "blur(2px)";
-  for (let i = 0; i < height; i += 1) {
-    for (let j = 0; j < width; j += 1) {
+  ctx.filter = "blur(3px)";
+  for (let i = bounds.minY; i <= bounds.maxY; i += 1) {
+    for (let j = bounds.minX; j <= bounds.maxX; j += 1) {
       const intensity = grid[i][j];
-      if (intensity > 0.3) {
-        ctx.fillStyle = getFireColor(Math.min(1, intensity + 0.2));
-        ctx.globalAlpha = 0.5;
-        ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
+      if (intensity > 0.08) {
+        const localX = j - bounds.minX;
+        const localY = i - bounds.minY;
+        ctx.fillStyle = getFireColor(Math.min(1, intensity + 0.25));
+        ctx.globalAlpha = 0.58;
+        ctx.fillRect(localX * cellWidth, localY * cellHeight, cellWidth, cellHeight);
       }
     }
   }
@@ -139,19 +157,21 @@ function renderFireGrid(canvas: HTMLCanvasElement, grid: number[][]) {
   ctx.filter = "none";
   ctx.globalAlpha = 1;
 
-  for (let i = 0; i < height; i += 1) {
-    for (let j = 0; j < width; j += 1) {
+  for (let i = bounds.minY; i <= bounds.maxY; i += 1) {
+    for (let j = bounds.minX; j <= bounds.maxX; j += 1) {
       const intensity = grid[i][j];
-      if (intensity > 0) {
+      if (intensity > 0.05) {
+        const localX = j - bounds.minX;
+        const localY = i - bounds.minY;
         ctx.fillStyle = getFireColor(intensity);
-        ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
+        ctx.fillRect(localX * cellWidth, localY * cellHeight, cellWidth, cellHeight);
 
         if (intensity > 0.8) {
-          ctx.fillStyle = "rgba(255, 255, 100, 0.6)";
+          ctx.fillStyle = "rgba(255, 247, 153, 0.75)";
           const spotSize = cellWidth * 0.6;
           ctx.fillRect(
-            j * cellWidth + (cellWidth - spotSize) / 2,
-            i * cellHeight + (cellHeight - spotSize) / 2,
+            localX * cellWidth + (cellWidth - spotSize) / 2,
+            localY * cellHeight + (cellHeight - spotSize) / 2,
             spotSize,
             spotSize,
           );
@@ -159,6 +179,42 @@ function renderFireGrid(canvas: HTMLCanvasElement, grid: number[][]) {
       }
     }
   }
+}
+
+function getActiveFireBounds(grid: number[][]): { minX: number; maxX: number; minY: number; maxY: number } | null {
+  const height = grid.length;
+  const width = grid[0]?.length || 0;
+  if (!height || !width) {
+    return null;
+  }
+
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (grid[y][x] > 0.08) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+
+  if (maxX < 0 || maxY < 0) {
+    return null;
+  }
+
+  const padding = 2;
+  return {
+    minX: Math.max(0, minX - padding),
+    minY: Math.max(0, minY - padding),
+    maxX: Math.min(width - 1, maxX + padding),
+    maxY: Math.min(height - 1, maxY + padding),
+  };
 }
 
 function getFireColor(intensity: number): string {

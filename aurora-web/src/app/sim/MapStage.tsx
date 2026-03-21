@@ -32,17 +32,27 @@ const MAP_STYLES = [
   {
     featureType: "landscape",
     elementType: "geometry",
-    stylers: [{ color: "#eef2f7" }],
+    stylers: [{ color: "#dde5ec" }],
   },
   {
     featureType: "water",
     elementType: "geometry",
-    stylers: [{ color: "#cbd5e1" }],
+    stylers: [{ color: "#aebfd3" }],
   },
   {
     featureType: "road",
     elementType: "geometry",
-    stylers: [{ color: "#d4dbe5" }],
+    stylers: [{ color: "#c7d2de" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "geometry",
+    stylers: [{ color: "#c7d9c7" }],
+  },
+  {
+    featureType: "administrative",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#94a3b8" }, { weight: 0.6 }],
   },
 ];
 
@@ -73,6 +83,14 @@ export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
   }, [currentStep, displayTicks]);
 
   const tick = displayTicks[currentTick];
+  const containmentPercent = tick ? Math.round(tick.metrics.containment * 100) : 0;
+  const activeFireLabel = tick
+    ? containmentPercent >= 100
+      ? "Contained"
+      : containmentPercent >= 70
+        ? "Contained edge"
+        : "Active fire"
+    : "Waiting";
 
   useEffect(() => {
     if (!map || !tick?.fireOrigin) {
@@ -209,13 +227,23 @@ export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
         ) : null}
       </div>
 
+      {tick ? (
+        <div className="absolute right-4 top-4 z-10 rounded-md border border-slate-700 bg-slate-950/92 px-4 py-3 text-sm text-white">
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">Fire state</p>
+          <p className="mt-1 font-semibold">{activeFireLabel}</p>
+          <p className="mt-2 text-xs text-slate-300">
+            {containmentPercent}% contained · {tick.metrics.burnedArea.toFixed(1)} acres burning
+          </p>
+        </div>
+      ) : null}
+
       <div className="absolute bottom-4 left-4 z-10 rounded-md border border-slate-700 bg-slate-950/92 px-4 py-3 text-sm text-white">
         <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">Legend</p>
         <div className="mt-3 space-y-2">
           <LegendRow swatchClassName="bg-orange-500" label="Fire intensity raster" />
-          <LegendRow swatchClassName="bg-blue-500" label="Idle drone" />
-          <LegendRow swatchClassName="bg-cyan-400" label="Drop action" />
-          <LegendRow swatchClassName="bg-purple-500" label="Scout action" />
+          <LegendRow swatchClassName="bg-sky-500" label="Drone marker" />
+          <LegendRow swatchClassName="bg-cyan-400" label="Water-drop radius" />
+          <LegendRow swatchClassName="bg-purple-500" label="Scout radius" />
           <LegendRow swatchClassName="border-2 border-red-500" label="Perimeter" />
         </div>
       </div>
