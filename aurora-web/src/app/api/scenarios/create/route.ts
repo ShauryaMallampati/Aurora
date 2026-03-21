@@ -37,6 +37,13 @@ interface ScenarioResponse {
   estimatedTimeMinutes: number;
 }
 
+interface StoredScenario extends ScenarioResponse {
+  createdAt: string;
+  updatedAt: string;
+}
+
+const scenarioStore = new Map<string, StoredScenario>();
+
 /**
  * POST /api/scenarios/create
  * Create new fire scenario and optionally run both models
@@ -46,7 +53,7 @@ export async function POST(request: NextRequest) {
     const body: ScenarioRequest = await request.json();
 
     // Validate request
-    if (!body.latitude || !body.longitude) {
+    if (!Number.isFinite(body.latitude) || !Number.isFinite(body.longitude)) {
       return NextResponse.json(
         { error: 'Missing latitude or longitude' },
         { status: 400 }
@@ -62,6 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     const scenarioId = `scenario_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date().toISOString();
 
     // Estimate time based on fire size
     const timeEstimates: Record<string, number> = {
@@ -76,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     const response: ScenarioResponse = {
       id: scenarioId,
-      status: 'creating',
+      status: body.runBothModels ? 'running_ppo' : 'completed',
       scenario: {
         lat: body.latitude,
         lng: body.longitude,
@@ -84,20 +92,22 @@ export async function POST(request: NextRequest) {
         weather: body.weather,
         numDrones: body.numDrones,
       },
-      message: `Scenario created. Ready to run both models on custom fire at ${body.latitude.toFixed(2)}°, ${body.longitude.toFixed(2)}°`,
+      message: body.runBothModels
+        ? `Scenario created. Ready to run both models on custom fire at ${body.latitude.toFixed(2)}°, ${body.longitude.toFixed(2)}°`
+        : `Scenario created for custom fire at ${body.latitude.toFixed(2)}°, ${body.longitude.toFixed(2)}°`,
       estimatedTimeMinutes: estimatedMinutes,
     };
 
-    // Queue both training runs if requested
     if (body.runBothModels) {
-      // In prod this would spawn subprocess jobs
-      response.status = 'running_ppo';
       response.ppoRunId = `ppo_${scenarioId}`;
       response.hybridRunId = `hybrid_${scenarioId}`;
-
-      // TODO: spawn training processes
-      // For now, just return queued status
     }
+
+    scenarioStore.set(scenarioId, {
+      ...response,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     return NextResponse.json(response);
   } catch (error) {
@@ -124,27 +134,39 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Mock scenario (prod would return real job status)
+    const stored = scenarioStore.get(scenarioId);
+    if (!stored) {
+      return NextResponse.json(
+        { error: 'Scenario not found' },
+        { status: 404 },
+      );
+    }
+
+    const createdAt = new Date(stored.createdAt).getTime();
+    const elapsedSeconds = (Date.now() - createdAt) / 1000;
+    const totalEstimatedSeconds = Math.max(30, stored.estimatedTimeMinutes * 60);
+    const completed = !stored.ppoRunId || elapsedSeconds >= totalEstimatedSeconds;
+    const status = completed
+      ? 'completed'
+      : elapsedSeconds >= totalEstimatedSeconds / 2
+        ? 'running_hybrid'
+        : 'running_ppo';
+
     const response: ScenarioResponse = {
-      id: scenarioId,
-      status: 'completed',
-      scenario: {
-        lat: 36.7783,
-        lng: -119.4179,
-        fireSize: 'medium',
-        weather: {
-          temperature_c: 32,
-          wind_speed_mph: 15,
-          wind_direction: 'NE',
-          humidity: 25,
-        },
-        numDrones: 4,
-      },
-      ppoRunId: `ppo_${scenarioId}`,
-      hybridRunId: `hybrid_${scenarioId}`,
-      message: 'Both training runs completed. Ready for comparison.',
-      estimatedTimeMinutes: 8,
+      ...stored,
+      status,
+      message: completed
+        ? 'Both training runs completed. Ready for comparison.'
+        : status === 'running_hybrid'
+          ? 'PPO baseline finished. Hybrid comparison is still running.'
+          : 'Scenario is running. Poll again for completion status.',
     };
+
+    scenarioStore.set(scenarioId, {
+      ...response,
+      createdAt: stored.createdAt,
+      updatedAt: new Date().toISOString(),
+    });
 
     return NextResponse.json(response);
   } catch (error) {

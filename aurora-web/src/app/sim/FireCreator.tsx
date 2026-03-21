@@ -353,7 +353,7 @@ export function FireCreator({ onClose, onCreateFire, onStartSimulation }: FireCr
               disabled={!isValid()}
               className="px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-gray-700 disabled:to-gray-700 text-white rounded-xl font-bold transition shadow-lg hover:shadow-purple-500/50 disabled:shadow-none flex items-center justify-center gap-2"
             >
-              ▶️ Start Sim Now
+              ▶️ Stage for Sim Start
             </button>
             <button
               onClick={handleCreate}

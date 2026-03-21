@@ -5,7 +5,7 @@ import { useSimulationStore } from "@/shared/store";
 import { MapStage } from "./MapStage";
 import { ArrowLeftRight, TrendingUp, TrendingDown, X, Loader2 } from "lucide-react";
 import { 
-  generateMockRuns, 
+  findMatchingRuns,
   calculateComparisonMetrics,
   getMaxSteps,
   type ComparisonMetrics as ComparisonMetricsType
@@ -27,6 +27,7 @@ export function SplitViewComparison({ onClose }: SplitViewComparisonProps = {}) 
 
   const [metrics, setMetrics] = useState<ComparisonMetricsType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [maxSteps, setMaxSteps] = useState(0);
   const [animatingMetrics, setAnimatingMetrics] = useState<{
     areaSavedPercent: number;
@@ -46,6 +47,7 @@ export function SplitViewComparison({ onClose }: SplitViewComparisonProps = {}) 
           const computed = calculateComparisonMetrics(ppoRun, hybridRun);
           setMetrics(computed);
           setMaxSteps(getMaxSteps(ppoRun, hybridRun));
+          setError(null);
           setAnimatingMetrics({
             areaSavedPercent: computed.areaSavedPercent,
             timeImprovementPercent: computed.timeImprovementPercent,
@@ -53,14 +55,16 @@ export function SplitViewComparison({ onClose }: SplitViewComparisonProps = {}) 
             successRateDelta: computed.successRateDelta,
           });
         } else {
-          // Mock data for now (backend would supply real data in prod)
-          const { ppo, hybrid } = generateMockRuns();
-          const computed = calculateComparisonMetrics(ppo, hybrid);
-          
-          // Store in Zustand
-          setComparisonRuns(ppo, hybrid, computed);
+          const matchedRuns = await findMatchingRuns();
+          if (!matchedRuns) {
+            throw new Error('No matching PPO/Hybrid runs are available for comparison yet.');
+          }
+
+          const computed = calculateComparisonMetrics(matchedRuns.ppo, matchedRuns.hybrid);
+          setComparisonRuns(matchedRuns.ppo, matchedRuns.hybrid, computed);
           setMetrics(computed);
-          setMaxSteps(getMaxSteps(ppo, hybrid));
+          setMaxSteps(getMaxSteps(matchedRuns.ppo, matchedRuns.hybrid));
+          setError(null);
           setAnimatingMetrics({
             areaSavedPercent: computed.areaSavedPercent,
             timeImprovementPercent: computed.timeImprovementPercent,
@@ -70,6 +74,7 @@ export function SplitViewComparison({ onClose }: SplitViewComparisonProps = {}) 
         }
       } catch (error) {
         console.error('Error initializing comparison runs:', error);
+        setError((error as Error).message);
       } finally {
         setIsLoading(false);
       }
@@ -90,8 +95,8 @@ export function SplitViewComparison({ onClose }: SplitViewComparisonProps = {}) 
       <div className="flex flex-col h-full bg-gray-950">
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 animate-spin text-purple-500 mx-auto mb-4" />
-            <p className="text-gray-400">Loading PPO vs Hybrid comparison...</p>
+            {error ? null : <Loader2 className="w-12 h-12 animate-spin text-purple-500 mx-auto mb-4" />}
+            <p className="text-gray-400">{error || 'Loading PPO vs Hybrid comparison...'}</p>
           </div>
         </div>
       </div>

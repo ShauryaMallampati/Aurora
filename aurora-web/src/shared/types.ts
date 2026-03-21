@@ -8,6 +8,15 @@ export interface SimulationConfig {
   llmCadence: number;
   weather: 'live' | 'fixed';
   maxSteps?: number;
+  customScenario?: {
+    lat: number;
+    lng: number;
+    fireSize: 'small' | 'medium' | 'large' | 'extreme';
+    windSpeed: number;
+    windDir: number;
+    temp: number;
+    humidity: number;
+  };
 }
 
 export interface StartSimResponse {
@@ -121,7 +130,8 @@ export interface RunSummary {
 }
 
 export interface ControlCommand {
-  action: 'pause' | 'resume' | 'step' | 'reset';
+  action: 'pause' | 'resume' | 'step' | 'reset' | 'speed';
   runId: string;
   steps?: number;
+  speed?: number;
 }

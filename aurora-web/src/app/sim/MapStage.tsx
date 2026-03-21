@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { GoogleMap, LoadScript } from "@react-google-maps/api";
+import { publicEnv } from "@/lib/env";
 import { useSimulationStore } from "@/shared/store";
-import { FireLayerCanvas } from "./FireLayerCanvas";
 import { DroneLayer } from "./DroneLayer";
+import { FireLayerCanvas } from "./FireLayerCanvas";
 import { PerimeterLayer } from "./PerimeterLayer";
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const GOOGLE_MAPS_API_KEY = publicEnv.googleMapsApiKey;
+const hasGoogleMapsKey = Boolean(GOOGLE_MAPS_API_KEY.trim());
 const LIBRARIES: ("visualization" | "geometry")[] = ["visualization", "geometry"];
 
-const DEFAULT_CENTER = { lat: 36.7783, lng: -119.4179 }; // CA
-const DEFAULT_ZOOM = 12;
+const DEFAULT_CENTER = {
+  lat: publicEnv.mapDefaults.lat,
+  lng: publicEnv.mapDefaults.lng,
+};
+const DEFAULT_ZOOM = publicEnv.mapDefaults.zoom;
 
 interface MapStageProps {
   modelType?: "ppo" | "hybrid";
@@ -27,12 +32,17 @@ const MAP_STYLES = [
   {
     featureType: "landscape",
     elementType: "geometry",
-    stylers: [{ color: "#1a1a1a" }],
+    stylers: [{ color: "#eef2f7" }],
   },
   {
     featureType: "water",
     elementType: "geometry",
-    stylers: [{ color: "#0a0a0a" }],
+    stylers: [{ color: "#cbd5e1" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#d4dbe5" }],
   },
 ];
 
@@ -43,20 +53,17 @@ export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
 
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [currentTick, setCurrentTick] = useState(0);
-  const [inspectorPos, setInspectorPos] = useState<{ x: number, y: number, lat: number, lng: number } | null>(null);
-  const [pinnedInspector, setPinnedInspector] = useState(false);
+  const [inspectorPos, setInspectorPos] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Use comparison runs if in comparison mode, else regular ticks
   let displayTicks = ticks;
   if (currentStep !== undefined) {
-    if (modelType === 'ppo' && ppoRun) {
+    if (modelType === "ppo" && ppoRun) {
       displayTicks = ppoRun.ticks;
-    } else if (modelType === 'hybrid' && hybridRun) {
+    } else if (modelType === "hybrid" && hybridRun) {
       displayTicks = hybridRun.ticks;
     }
   }
 
-  // Use latest tick or the requested step
   useEffect(() => {
     if (currentStep !== undefined) {
       setCurrentTick(currentStep);
@@ -67,167 +74,228 @@ export function MapStage({ modelType = "hybrid", currentStep }: MapStageProps) {
 
   const tick = displayTicks[currentTick];
 
-  // Handle map click for the inspector
-  const handleMapClick = (e: google.maps.MapMouseEvent) => {
-    if (e.latLng) {
-      const lat = e.latLng.lat();
-      const lng = e.latLng.lng();
-      // Convert to screen coords (approx; map.getProjection() needed for exact)
-      setInspectorPos({ x: 0, y: 0, lat, lng });
-      setPinnedInspector(true);
-    }
-  };
-
-  // Center map on fire if available
   useEffect(() => {
-    if (map && tick?.fireOrigin) {
-      const lat = tick.fireOrigin.lat;
-      const lng = tick.fireOrigin.lng;
+    if (!map || !tick?.fireOrigin) {
+      return;
+    }
 
-      // Validate coords before setting
-      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-        map.setCenter({ lat, lng });
-      }
+    const { lat, lng } = tick.fireOrigin;
+    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+      map.setCenter({ lat, lng });
     }
   }, [map, tick?.fireOrigin]);
 
-  // Listen for custom fire location events
   useEffect(() => {
-    const handleMoveMap = (event: CustomEvent) => {
-      const { lat, lng, zoom } = event.detail;
-      if (map && !isNaN(lat) && !isNaN(lng)) {
-        map.setCenter({ lat, lng });
-        if (zoom && !isNaN(zoom)) {
-          map.setZoom(zoom);
-        }
+    const handleMoveMap = (event: Event) => {
+      const customEvent = event as CustomEvent<{ lat: number; lng: number; zoom?: number }>;
+      const { lat, lng, zoom } = customEvent.detail;
+
+      if (!map || Number.isNaN(lat) || Number.isNaN(lng)) {
+        return;
+      }
+
+      map.setCenter({ lat, lng });
+      if (zoom !== undefined && !Number.isNaN(zoom)) {
+        map.setZoom(zoom);
       }
     };
 
-    window.addEventListener('moveMapToFire' as any, handleMoveMap as any);
+    window.addEventListener("moveMapToFire", handleMoveMap as EventListener);
     return () => {
-      window.removeEventListener('moveMapToFire' as any, handleMoveMap as any);
+      window.removeEventListener("moveMapToFire", handleMoveMap as EventListener);
     };
   }, [map]);
 
+  const handleMapClick = (event: google.maps.MapMouseEvent) => {
+    if (!event.latLng) {
+      return;
+    }
+
+    const lat = event.latLng.lat();
+    const lng = event.latLng.lng();
+
+    setInspectorPos({ lat, lng });
+    window.dispatchEvent(
+      new CustomEvent("setCustomFireLocation", {
+        detail: { lat, lng },
+      }),
+    );
+  };
+
   return (
-    <div className="w-full h-full relative">
-      {/* Model Type Badge */}
-      {modelType && (
-        <div className={`absolute top-4 left-4 z-10 px-3 py-1 rounded-lg text-white text-sm font-semibold ${modelType === "ppo" ? "bg-blue-600" : "bg-purple-600"
-          }`}>
-          {modelType === "ppo" ? "PPO Baseline" : "Hybrid (PPO + LLM)"}
+    <div className="relative h-full w-full bg-slate-200">
+      {!hasGoogleMapsKey ? (
+        <div className="flex h-full items-center justify-center p-6">
+          <div className="max-w-xl rounded-md border border-slate-300 bg-white p-6 text-center">
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+              Map unavailable
+            </p>
+            <h2 className="mt-3 text-2xl font-semibold text-slate-900">
+              Google Maps requires `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              The simulator can still stream logs and telemetry locally, but the map overlay is disabled
+              until the public key is present.
+            </p>
+            {tick ? (
+              <div className="mt-6 rounded-md border border-slate-300 bg-slate-50 p-4 text-left">
+                <p className="text-xs uppercase tracking-[0.08em] text-slate-500">Current step</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{tick.t}</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {new Date(tick.timestamp).toLocaleTimeString()}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-6 text-sm text-slate-500">No telemetry has been streamed yet.</p>
+            )}
+          </div>
         </div>
+      ) : (
+        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={LIBRARIES}>
+          <GoogleMap
+            mapContainerStyle={{ width: "100%", height: "100%" }}
+            center={DEFAULT_CENTER}
+            zoom={DEFAULT_ZOOM}
+            onLoad={setMap}
+            onClick={handleMapClick}
+            options={{
+              styles: MAP_STYLES,
+              disableDefaultUI: true,
+              zoomControl: true,
+              gestureHandling: "greedy",
+              mapTypeId: "terrain",
+            }}
+          >
+            {tick ? <FireLayerCanvas tick={tick} map={map} /> : null}
+            {tick ? <PerimeterLayer /> : null}
+            {tick ? <DroneLayer tick={tick} /> : null}
+          </GoogleMap>
+        </LoadScript>
       )}
 
-      <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={LIBRARIES}>
-        <GoogleMap
-          mapContainerStyle={{ width: "100%", height: "100%" }}
-          center={DEFAULT_CENTER}
-          zoom={DEFAULT_ZOOM}
-          onLoad={setMap}
-          onClick={handleMapClick}
-          options={{
-            styles: MAP_STYLES,
-            disableDefaultUI: true,
-            zoomControl: true,
-            gestureHandling: "greedy",
-            mapTypeId: "terrain",
-          }}
-        >
-          {/* Fire Heat Layer */}
-          {tick && <FireLayerCanvas tick={tick} map={map} />}
-
-          {/* Perimeter Layer */}
-          {tick && <PerimeterLayer />}
-
-          {/* Drone Markers */}
-          {tick && <DroneLayer tick={tick} />}
-        </GoogleMap>
-      </LoadScript>
-
-      {/* Timestep Indicator */}
-      {tick && (
-        <div className="absolute top-4 left-4 bg-gray-900/90 backdrop-blur px-4 py-2 rounded-lg border border-gray-800">
-          <div className="text-xs text-gray-400">Timestep</div>
-          <div className="text-2xl font-bold text-white">{tick.t}</div>
-          <div className="text-xs text-gray-400 mt-1">
-            {new Date(tick.timestamp).toLocaleTimeString()}
-          </div>
+      <div className="absolute left-4 top-4 z-10 flex max-w-sm flex-col gap-3">
+        <div className="rounded-md border border-slate-700 bg-slate-950/92 px-4 py-3 text-white">
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">Model</p>
+          <p className="mt-1 text-sm font-semibold">
+            {modelType === "ppo" ? "PPO baseline" : "Hybrid controller"}
+          </p>
         </div>
-      )}
 
-      {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-gray-900/90 backdrop-blur px-4 py-3 rounded-lg border border-gray-800">
-        <div className="text-xs font-semibold text-white mb-2">Legend</div>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gradient-to-r from-orange-500 to-red-600 rounded"></div>
-            <span className="text-xs text-gray-300">Fire Intensity</span>
+        {tick ? (
+          <div className="rounded-md border border-slate-700 bg-slate-950/92 px-4 py-3 text-white">
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">Telemetry</p>
+            <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-slate-400">Step</p>
+                <p className="font-mono">{tick.t}</p>
+              </div>
+              <div>
+                <p className="text-slate-400">Containment</p>
+                <p className="font-mono">{(tick.metrics.containment * 100).toFixed(0)}%</p>
+              </div>
+              <div>
+                <p className="text-slate-400">Burned area</p>
+                <p className="font-mono">{tick.metrics.burnedArea.toFixed(1)} acres</p>
+              </div>
+              <div>
+                <p className="text-slate-400">Water dropped</p>
+                <p className="font-mono">{tick.metrics.waterDropped.toFixed(1)} L</p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-slate-400">
+              {new Date(tick.timestamp).toLocaleTimeString()}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-blue-500 rounded"></div>
-            <span className="text-xs text-gray-300">Drone (Idle)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-cyan-500 rounded"></div>
-            <span className="text-xs text-gray-300">Drone (Drop)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-purple-500 rounded"></div>
-            <span className="text-xs text-gray-300">Drone (Scout)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 border-2 border-red-500 rounded-full"></div>
-            <span className="text-xs text-gray-300">Fire Perimeter</span>
-          </div>
-        </div>
-        <div className="text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-700">
-          Click map to inspect terrain data
+        ) : null}
+      </div>
+
+      <div className="absolute bottom-4 left-4 z-10 rounded-md border border-slate-700 bg-slate-950/92 px-4 py-3 text-sm text-white">
+        <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">Legend</p>
+        <div className="mt-3 space-y-2">
+          <LegendRow swatchClassName="bg-orange-500" label="Fire intensity raster" />
+          <LegendRow swatchClassName="bg-blue-500" label="Idle drone" />
+          <LegendRow swatchClassName="bg-cyan-400" label="Drop action" />
+          <LegendRow swatchClassName="bg-purple-500" label="Scout action" />
+          <LegendRow swatchClassName="border-2 border-red-500" label="Perimeter" />
         </div>
       </div>
 
-      {/* Data Inspector Popover */}
-      {pinnedInspector && inspectorPos && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-900/95 backdrop-blur px-4 py-3 rounded-lg border border-gray-700 shadow-xl z-20 min-w-[240px]">
-          <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
-            <div className="text-xs font-semibold text-white">Terrain Inspector</div>
+      {inspectorPos ? (
+        <div className="absolute bottom-4 right-4 z-20 min-w-[260px] rounded-md border border-slate-700 bg-slate-950/95 px-4 py-3 text-sm text-white">
+          <div className="flex items-center justify-between gap-4 border-b border-slate-800 pb-2">
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">
+              Point inspector
+            </p>
             <button
-              onClick={() => setPinnedInspector(false)}
-              className="text-gray-400 hover:text-white text-xs"
+              onClick={() => setInspectorPos(null)}
+              className="text-xs text-slate-400 transition hover:text-white"
             >
-              ✕
+              Close
             </button>
           </div>
-          <div className="space-y-1.5 text-xs">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Coordinates:</span>
-              <span className="font-mono text-white">
-                {inspectorPos.lat.toFixed(4)}, {inspectorPos.lng.toFixed(4)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Elevation:</span>
-              <span className="font-semibold text-white">{(Math.random() * 2000 + 500).toFixed(0)} m</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Slope:</span>
-              <span className="font-semibold text-white">{(Math.random() * 30).toFixed(1)}°</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Fuel Class:</span>
-              <span className="font-semibold text-white">Dense Forest</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Wind (local):</span>
-              <span className="font-semibold text-white">{(Math.random() * 20 + 5).toFixed(1)} mph NE</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Ignition Age:</span>
-              <span className="font-semibold text-white">{tick ? `${tick.t} steps` : "N/A"}</span>
-            </div>
+
+          <div className="mt-3 space-y-2">
+            <InspectorRow
+              label="Coordinates"
+              value={`${inspectorPos.lat.toFixed(4)}, ${inspectorPos.lng.toFixed(4)}`}
+            />
+            <InspectorRow
+              label="Wind"
+              value={
+                tick
+                  ? `${tick.weather.windSpeed.toFixed(1)} m/s @ ${Math.round(tick.weather.windDir)}°`
+                  : "N/A"
+              }
+            />
+            <InspectorRow
+              label="Temperature"
+              value={tick ? `${tick.weather.temp.toFixed(1)}°C` : "N/A"}
+            />
+            <InspectorRow
+              label="Humidity"
+              value={tick ? `${(tick.weather.humidity * 100).toFixed(0)}%` : "N/A"}
+            />
+            <InspectorRow
+              label="Burned area"
+              value={tick ? `${tick.metrics.burnedArea.toFixed(1)} acres` : "N/A"}
+            />
+            <InspectorRow
+              label="Elapsed steps"
+              value={tick ? String(tick.t) : "N/A"}
+            />
           </div>
         </div>
-      )}
+      ) : null}
+    </div>
+  );
+}
+
+function LegendRow({
+  swatchClassName,
+  label,
+}: {
+  swatchClassName: string;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`h-3 w-3 rounded-sm ${swatchClassName}`} />
+      <span className="text-xs text-slate-300">{label}</span>
+    </div>
+  );
+}
+
+function InspectorRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <span className="text-slate-400">{label}</span>
+      <span className="text-right font-mono text-white">{value}</span>
     </div>
   );
 }

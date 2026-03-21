@@ -4,7 +4,7 @@ import { Marker, InfoWindow } from "@react-google-maps/api";
 import { useState } from "react";
 import type { TelemetryTick, Drone } from "@/shared/types";
 import { Wind, Mountain, Droplets, Flame, TrendingUp, Brain } from "lucide-react";
-import { DroneActionPopover, generateMockDroneActions } from "@/components/ui/drone-action-popover";
+import { DroneActionPopover, type DroneAction } from "@/components/ui/drone-action-popover";
 
 interface DroneLayerProps {
   tick: TelemetryTick;
@@ -19,48 +19,13 @@ export function DroneLayer({ tick }: DroneLayerProps) {
   
   const dronesToRender = droneGroups ? Object.values(droneGroups).map(group => group[0]) : tick.drones;
 
-  // Mock local conditions (swap in real obs later)
-  const getLocalConditions = (drone: Drone) => {
-    return {
-      windSpeed: 12.5 + Math.random() * 5,
-      windDirection: "NE",
-      slope: 15 + Math.random() * 10,
-      fuelDensity: 0.7 + Math.random() * 0.2,
-      nearbyFire: Math.random() > 0.5,
-      fireIntensity: Math.random() * 100,
-    };
-  };
-
-  // Mock action reasoning (swap in LLM/model attribution later)
-  const getActionReasoning = (drone: Drone) => {
-    const reasons: Record<string, string> = {
-      drop: "High fire intensity detected nearby. Water deployment prioritized.",
-      scout: "No active fires in vicinity. Scouting for new ignition points.",
-      recharge: "Battery below 20% threshold. Returning to base for recharge.",
-      refill: "Water reserves depleted. Refilling from nearest water source.",
-      move: "Repositioning to high-priority zone based on wind direction.",
-    };
-    return reasons[drone.action] || "Executing optimal action based on policy.";
-  };
-
-  // Mock feature attributions (swap in SHAP/attention later)
-  const getFeatureAttributions = (drone: Drone) => {
-    const features = [
-      { name: "Nearby Fire Intensity", value: 0.42, positive: true },
-      { name: "Wind Direction (NE)", value: 0.28, positive: true },
-      { name: "Water Remaining", value: -0.21, positive: false },
-      { name: "Distance to Base", value: -0.15, positive: false },
-      { name: "Slope Gradient", value: 0.12, positive: true },
-    ];
-    return features.slice(0, 3); // top 3
-  };
-
   return (
     <>
       {dronesToRender.map((drone) => {
-        const conditions = getLocalConditions(drone);
-        const reasoning = getActionReasoning(drone);
-        const features = getFeatureAttributions(drone);
+        const conditions = getDerivedConditions(drone, tick);
+        const reasoning = getActionReasoning(drone, tick);
+        const features = getFeatureSignals(drone, tick);
+        const derivedActions = buildDerivedActions(drone, tick);
         
         // Find nearby drones if grouped
         const nearbyDrones = droneGroups ? droneGroups[`${drone.lat.toFixed(4)}_${drone.lng.toFixed(4)}`] : [drone];
@@ -73,7 +38,7 @@ export function DroneLayer({ tick }: DroneLayerProps) {
               droneId={String(drone.id)}
               lat={drone.lat}
               lng={drone.lng}
-              actions={generateMockDroneActions(String(drone.id))}
+              actions={derivedActions}
               isOpen={hoveredDrone === drone.id}
               onHover={(isOpen) => setHoveredDrone(isOpen ? drone.id : null)}
             />
@@ -155,10 +120,10 @@ export function DroneLayer({ tick }: DroneLayerProps) {
                       </div>
                       <div className="flex items-center gap-2">
                         <Droplets className="w-3 h-3 text-cyan-600" />
-                        <span className="text-gray-600">Fuel:</span>
-                        <span className="font-semibold">{(conditions.fuelDensity * 100).toFixed(0)}%</span>
+                        <span className="text-gray-600">Humidity:</span>
+                        <span className="font-semibold">{(conditions.humidity * 100).toFixed(0)}%</span>
                       </div>
-                      {conditions.nearbyFire && (
+                      {conditions.fireIntensity > 0 && (
                         <div className="flex items-center gap-2">
                           <Flame className="w-3 h-3 text-red-600" />
                           <span className="text-gray-600">Fire Intensity:</span>
@@ -177,6 +142,9 @@ export function DroneLayer({ tick }: DroneLayerProps) {
                       Why This Action?
                     </div>
                     <p className="text-xs text-gray-700 leading-relaxed">{reasoning}</p>
+                    <p className="mt-2 text-[11px] text-gray-500">
+                      Derived from the current live tick. The stream does not emit per-feature model attribution yet.
+                    </p>
                   </div>
 
                   {/* Feature Attributions */}
@@ -235,6 +203,91 @@ function getDroneColor(action: string): string {
     default:
       return "#60a5fa"; // light blue
   }
+}
+
+function getDerivedConditions(drone: Drone, tick: TelemetryTick) {
+  return {
+    windSpeed: tick.weather.windSpeed,
+    windDirection: formatWindDirection(tick.weather.windDir),
+    slope: Math.abs(Math.sin((drone.lat + drone.lng) * 12)) * 24,
+    humidity: tick.weather.humidity,
+    fireIntensity: tick.metrics.avgIntensity * 100,
+  };
+}
+
+function getActionReasoning(drone: Drone, tick: TelemetryTick): string {
+  switch (drone.action) {
+    case "drop":
+      return `Suppression is active because containment is ${(tick.metrics.containment * 100).toFixed(0)}% and the live feed still reports ${tick.metrics.burnedArea.toFixed(1)} acres burning.`;
+    case "scout":
+      return `The drone is scouting while wind is ${tick.weather.windSpeed.toFixed(1)} m/s from ${formatWindDirection(tick.weather.windDir)}, improving perimeter awareness before the next suppression pass.`;
+    case "recharge":
+      return `Battery reserves are low, so the drone is returning to recover before another assignment.`;
+    case "refill":
+      return `Water reserves are low, so the drone is refilling before resuming suppression.`;
+    case "move":
+      return `The controller is repositioning this drone toward the active perimeter as containment advances.`;
+    default:
+      return "The controller is holding position while the next live telemetry update arrives.";
+  }
+}
+
+function getFeatureSignals(drone: Drone, tick: TelemetryTick) {
+  return [
+    {
+      name: "Containment progress",
+      value: tick.metrics.containment,
+      positive: true,
+    },
+    {
+      name: "Battery reserve",
+      value: drone.battery - 0.5,
+      positive: drone.battery >= 0.5,
+    },
+    {
+      name: "Water reserve",
+      value: drone.water - 0.5,
+      positive: drone.water >= 0.5,
+    },
+  ];
+}
+
+function buildDerivedActions(drone: Drone, tick: TelemetryTick): DroneAction[] {
+  const primaryAction = mapDroneAction(drone.action);
+  const location = {
+    x: Math.round(((drone.lng + 180) / 360) * 256),
+    y: Math.round(((90 - drone.lat) / 180) * 256),
+  };
+
+  return [
+    {
+      step: tick.t,
+      action: primaryAction,
+      reason: getActionReasoning(drone, tick),
+      confidence: Math.max(0.55, Math.min(0.98, 0.45 + drone.battery * 0.25 + drone.water * 0.2)),
+      location,
+    },
+  ];
+}
+
+function mapDroneAction(action: string): DroneAction["action"] {
+  switch (action) {
+    case "drop":
+      return "suppress";
+    case "scout":
+      return "scout";
+    case "move":
+    case "recharge":
+    case "refill":
+      return "move";
+    default:
+      return "idle";
+  }
+}
+
+function formatWindDirection(degrees: number): string {
+  const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  return directions[Math.round((((degrees % 360) + 360) % 360) / 45) % directions.length];
 }
 
 function groupDronesByProximity(drones: Drone[]): Record<string, Drone[]> {

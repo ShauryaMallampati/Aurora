@@ -1,9 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+export const supabase: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 // Run record type that matches the DB schema
 export interface RunRecord {
@@ -23,6 +27,10 @@ export interface RunRecord {
 
 // Helpers for run history persistence
 export async function saveRun(run: Omit<RunRecord, 'timestamp' | 'id'>): Promise<RunRecord | null> {
+  if (!supabase) {
+    return null;
+  }
+
   const runWithId = {
     ...run,
     id: `run_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -43,6 +51,10 @@ export async function saveRun(run: Omit<RunRecord, 'timestamp' | 'id'>): Promise
 }
 
 export async function getRuns(): Promise<RunRecord[]> {
+  if (!supabase) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('runs')
     .select('*')
@@ -56,6 +68,10 @@ export async function getRuns(): Promise<RunRecord[]> {
 }
 
 export async function updateRunPin(id: string, pinned: boolean): Promise<boolean> {
+  if (!supabase) {
+    return false;
+  }
+
   const { error } = await supabase
     .from('runs')
     .update({ pinned })
@@ -69,6 +85,10 @@ export async function updateRunPin(id: string, pinned: boolean): Promise<boolean
 }
 
 export async function deleteRun(id: string): Promise<boolean> {
+  if (!supabase) {
+    return false;
+  }
+
   const { error } = await supabase
     .from('runs')
     .delete()

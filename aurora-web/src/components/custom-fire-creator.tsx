@@ -42,13 +42,13 @@ export function CustomFireCreator() {
   const [creationStatus, setCreationStatus] = useState<CreationStatus>({
     id: '',
     status: 'idle',
-    message: 'Ready to create custom fire scenario',
+    message: 'Ready to prepare a custom scenario',
   });
 
   const [runBothModels, setRunBothModels] = useState(true);
 
   const handleCreateScenario = async () => {
-    setCreationStatus({ ...creationStatus, status: 'creating', message: 'Creating scenario...' });
+    setCreationStatus({ ...creationStatus, status: 'creating', message: 'Submitting scenario request...' });
 
     try {
       const response = await fetch('/api/scenarios/create', {
@@ -131,12 +131,12 @@ export function CustomFireCreator() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-900 to-red-900 border border-orange-700 rounded-lg p-6">
+      <div className="rounded-md border border-slate-700 bg-slate-900 p-6">
         <div className="flex items-center gap-3 mb-2">
-          <Flame className="w-8 h-8 text-orange-300" />
-          <h2 className="text-2xl font-bold text-white">Create Custom Fire Scenario</h2>
+          <Flame className="w-6 h-6 text-slate-300" />
+          <h2 className="text-2xl font-semibold text-white">Custom scenario</h2>
         </div>
-        <p className="text-orange-200">Generate a fire scenario at any location and run both PPO and Hybrid models</p>
+        <p className="text-slate-400">Create a scenario request and run PPO and hybrid models for comparison.</p>
       </div>
 
       {/* Location Input */}
@@ -304,7 +304,7 @@ export function CustomFireCreator() {
 
       {/* Model Selection */}
       <div>
-        <label className="block text-sm font-semibold text-white mb-3">Run Models</label>
+        <label className="block text-sm font-semibold text-white mb-3">Run models</label>
         <div className="flex gap-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -313,7 +313,7 @@ export function CustomFireCreator() {
               onChange={(e) => setRunBothModels(e.target.checked)}
               className="w-4 h-4 bg-slate-800 border border-slate-600 rounded"
             />
-            <span className="text-white">Run both PPO + Hybrid for comparison</span>
+            <span className="text-white">Run both PPO and Hybrid for comparison</span>
           </label>
         </div>
       </div>
@@ -322,7 +322,7 @@ export function CustomFireCreator() {
       <button
         onClick={handleCreateScenario}
         disabled={creationStatus.status === 'creating' || creationStatus.status === 'running'}
-        className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition"
+        className="flex w-full items-center justify-center gap-2 rounded-md border border-blue-600 bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:border-slate-700 disabled:bg-slate-700"
       >
         {creationStatus.status === 'creating' || creationStatus.status === 'running' ? (
           <>
@@ -332,7 +332,7 @@ export function CustomFireCreator() {
         ) : (
           <>
             <Flame className="w-4 h-4" />
-            Create Fire Scenario
+            Create scenario
           </>
         )}
       </button>
@@ -348,7 +348,7 @@ export function CustomFireCreator() {
               : 'bg-blue-900/20 border-blue-700 text-blue-300'
           }`}
         >
-          <p className="font-semibold mb-2">{creationStatus.status === 'completed' ? '✅' : '⏳'} {creationStatus.message}</p>
+          <p className="font-semibold mb-2">{creationStatus.message}</p>
           {creationStatus.estimatedTimeMinutes && creationStatus.status === 'running' && (
             <p className="text-sm">Estimated time: {creationStatus.estimatedTimeMinutes} minutes</p>
           )}

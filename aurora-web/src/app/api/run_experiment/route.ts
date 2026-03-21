@@ -39,17 +39,75 @@ interface ExperimentResponse {
   message: string;
 }
 
-// In-memory store for active experiments
-const activeExperiments = new Map<string, {
+type ExperimentStatus = ExperimentResponse['status'];
+
+type ActiveExperiment = {
   process: any;
   metrics: TrainingMetrics[];
   startTime: number;
   config: ExperimentRequest;
-}>();
+  outputDir: string;
+  status: ExperimentStatus;
+  exitCode: number | null;
+  errorLog: string[];
+  stdoutBuffer: string;
+};
+
+// In-memory store for active experiments
+const activeExperiments = new Map<string, ActiveExperiment>();
 
 // Generate unique experiment ID
 function generateExperimentId(): string {
   return `exp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function resolvePythonPath(projectRoot: string): string {
+  const candidates = [
+    process.env.AURORA_PYTHON_BIN,
+    process.env.PYTHON_BIN,
+    path.join(projectRoot, '.venv', 'bin', 'python'),
+    path.join(projectRoot, 'venv', 'bin', 'python'),
+    'python3',
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  for (const candidate of candidates) {
+    if (candidate === 'python3' || fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return 'python3';
+}
+
+function resolveResultsPath(projectRoot: string, experimentId: string): string | null {
+  const directPath = path.join(projectRoot, 'results', experimentId);
+  if (fs.existsSync(directPath)) {
+    return directPath;
+  }
+
+  const legacyPath = path.join(projectRoot, 'results', `exp_${experimentId}`);
+  if (fs.existsSync(legacyPath)) {
+    return legacyPath;
+  }
+
+  return null;
+}
+
+function formatExperimentMessage(experiment: ActiveExperiment): string {
+  if (experiment.status === 'failed') {
+    const lastError = experiment.errorLog.at(-1);
+    return lastError ? `Training failed: ${lastError}` : 'Training failed';
+  }
+
+  if (experiment.status === 'completed') {
+    return 'Training completed';
+  }
+
+  if (experiment.status === 'running') {
+    return 'Training in progress';
+  }
+
+  return 'Training is starting';
 }
 
 /**
@@ -86,10 +144,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Build command
-    const projectRoot = process.env.AURORA_PROJECT_ROOT || path.join(process.cwd(), '..');
-    const pythonPath = 'python3';
+    const projectRoot = process.env.AURORA_PROJECT_ROOT || path.resolve(process.cwd(), '..');
+    const pythonPath = resolvePythonPath(projectRoot);
     const scriptPath = path.join(projectRoot, 'train_manager.py');
-    const outputDir = path.join(projectRoot, 'results', `exp_${experimentId}`);
+    const outputDir = path.join(projectRoot, 'results', experimentId);
 
     // Ensure output dir exists
     // Only attempt if not on Vercel (extra safety)
@@ -125,27 +183,59 @@ export async function POST(request: NextRequest) {
       metrics: [],
       startTime,
       config: body,
+      outputDir,
+      status: 'starting',
+      exitCode: null,
+      errorLog: [],
+      stdoutBuffer: '',
     });
 
     // Capture stdout for metrics
     if (trainProcess.stdout) {
       trainProcess.stdout.on('data', (data: Buffer) => {
-        const output = data.toString('utf-8');
-        parseMetrics(experimentId, output);
+        parseMetrics(experimentId, data.toString('utf-8'));
       });
     }
 
     // Capture stderr
     if (trainProcess.stderr) {
       trainProcess.stderr.on('data', (data: Buffer) => {
-        console.error(`[Experiment ${experimentId}] stderr:`, data.toString('utf-8'));
+        const output = data.toString('utf-8').trim();
+        const experiment = activeExperiments.get(experimentId);
+        if (experiment && output) {
+          experiment.errorLog.push(output);
+          if (experiment.errorLog.length > 50) {
+            experiment.errorLog = experiment.errorLog.slice(-50);
+          }
+        }
+        console.error(`[Experiment ${experimentId}] stderr:`, output);
       });
     }
 
+    trainProcess.on('error', (error: Error) => {
+      const experiment = activeExperiments.get(experimentId);
+      if (!experiment) {
+        return;
+      }
+
+      experiment.status = 'failed';
+      experiment.exitCode = -1;
+      experiment.errorLog.push(error.message);
+    });
+
     // Handle process exit
-    trainProcess.on('exit', (code: number) => {
+    trainProcess.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
       const exp = activeExperiments.get(experimentId);
       if (exp) {
+        exp.exitCode = code;
+        exp.status = code === 0 ? 'completed' : 'failed';
+        const diskMetrics = loadMetricsFromDisk(exp.outputDir);
+        if (diskMetrics.length > 0) {
+          exp.metrics = diskMetrics;
+        }
+        if (signal) {
+          exp.errorLog.push(`Process terminated with signal ${signal}`);
+        }
         if (code === 0) {
           console.log(`✅ Experiment ${experimentId} completed successfully`);
         } else {
@@ -195,10 +285,10 @@ export async function GET(request: NextRequest) {
 
     if (!experiment) {
       // Check if experiment data exists on disk
-      const projectRoot = process.env.AURORA_PROJECT_ROOT || '/Users/ankit/Aurora';
-      const resultsPath = path.join(projectRoot, 'results', `exp_${experimentId}`);
+      const projectRoot = process.env.AURORA_PROJECT_ROOT || path.resolve(process.cwd(), '..');
+      const resultsPath = resolveResultsPath(projectRoot, experimentId);
       
-      if (!fs.existsSync(resultsPath)) {
+      if (!resultsPath || !fs.existsSync(resultsPath)) {
         return NextResponse.json(
           { error: `Experiment ${experimentId} not found` },
           { status: 404 }
@@ -224,17 +314,36 @@ export async function GET(request: NextRequest) {
 
     if (experiment) {
       const elapsedSeconds = (Date.now() - experiment.startTime) / 1000;
-      const isRunning = experiment.process && !experiment.process.killed;
+      const metadataPath = path.join(experiment.outputDir, 'run_metadata.json');
+      const hasDiskMetadata = fs.existsSync(metadataPath);
+
+      if (hasDiskMetadata && experiment.status !== 'starting' && experiment.status !== 'running') {
+        const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+        return NextResponse.json({
+          id: experimentId,
+          mode: metadata.mode,
+          phase: metadata.phase,
+          status: metadata.status || experiment.status,
+          start_time: metadata.start_time,
+          elapsed_seconds: metadata.elapsed_seconds ?? elapsedSeconds,
+          metrics: loadMetricsFromDisk(experiment.outputDir),
+          current_step: metadata.current_step,
+          total_steps: metadata.total_steps,
+          message: metadata.error ? `Training failed: ${metadata.error}` : 'Experiment data loaded from disk',
+        } as ExperimentResponse);
+      }
 
       return NextResponse.json({
         id: experimentId,
         mode: experiment.config.mode,
         phase: experiment.config.phase,
-        status: isRunning ? 'running' : 'completed',
+        status: experiment.status === 'starting' ? 'starting' : experiment.status,
         start_time: new Date(experiment.startTime).toISOString(),
         elapsed_seconds: elapsedSeconds,
         metrics: experiment.metrics,
-        message: isRunning ? 'Training in progress' : 'Training completed',
+        current_step: experiment.metrics.at(-1)?.step,
+        total_steps: experiment.metrics.at(-1)?.step,
+        message: formatExperimentMessage(experiment),
       } as ExperimentResponse);
     }
 
@@ -259,12 +368,19 @@ function parseMetrics(experimentId: string, output: string): void {
   const experiment = activeExperiments.get(experimentId);
   if (!experiment) return;
 
-  // Look for metrics patterns in output
-  // Example: "Step: 100, Return: 45.2, Completion: 0.87, Idle: 25, LLM_Latency: 12.5ms"
+  experiment.status = 'running';
+  experiment.stdoutBuffer += output;
+  const lines = experiment.stdoutBuffer.split(/\r?\n/);
+  experiment.stdoutBuffer = lines.pop() ?? '';
+
   const metricsRegex = /Step:\s*(\d+).*?Return:\s*([\d.-]+).*?Completion:\s*([\d.-]+).*?Idle:\s*(\d+).*?LLM_Latency:\s*([\d.-]+)/;
-  
-  const match = output.match(metricsRegex);
-  if (match) {
+
+  for (const line of lines) {
+    const match = line.match(metricsRegex);
+    if (!match) {
+      continue;
+    }
+
     const metric: TrainingMetrics = {
       step: parseInt(match[1]),
       episode_return: parseFloat(match[2]),
@@ -276,7 +392,6 @@ function parseMetrics(experimentId: string, output: string): void {
 
     experiment.metrics.push(metric);
 
-    // Keep last 1000 metrics in memory
     if (experiment.metrics.length > 1000) {
       experiment.metrics = experiment.metrics.slice(-1000);
     }

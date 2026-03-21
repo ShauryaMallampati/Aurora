@@ -1,17 +1,30 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { History, Play, Pin, PinOff, Search, Filter, Download, Trash2, RefreshCw } from "lucide-react";
-import { Navigation } from "@/shared/Navigation";
-import { supabase, saveRun, getRuns, updateRunPin, deleteRun } from "@/lib/supabase";
-
-// Real training metrics from AURORA runs
-const REAL_METRICS = {
-  ppo: { avgReturn: 34.57, avgCompletion: 0.72 },
-  hybrid_3b: { avgReturn: 41.84, avgCompletion: 0.87 },
-  hybrid_7b: { avgReturn: 39.08, avgCompletion: 0.82 },
-};
+import {
+  ArrowRight,
+  Download,
+  Filter,
+  History,
+  Pin,
+  PinOff,
+  Play,
+  Search,
+  Trash2,
+} from "lucide-react";
+import {
+  ResearchPageShell,
+  ResearchPanel,
+  ResearchSubtlePanel,
+} from "@/components/ui/research-page-shell";
+import {
+  deleteRun,
+  getRuns,
+  isSupabaseConfigured,
+  updateRunPin,
+} from "@/lib/supabase";
 
 interface RunRecord {
   id: string;
@@ -29,98 +42,134 @@ interface RunRecord {
   tags: string[];
 }
 
-// Default runs based on real training results
-const DEFAULT_RUNS: RunRecord[] = [
-  {
-    id: "run_camp_fire_hybrid",
-    scenario: "Camp Fire",
-    model: "hybrid",
-    seed: 42,
-    metrics: { return: 178.3, completionRate: 0.92, containmentSteps: 380 },
-    duration: 312,
-    timestamp: new Date().toISOString(),
-    pinned: true,
-    tags: ["hybrid", "phase-c", "qwen-3b"],
-  },
-  {
-    id: "run_camp_fire_ppo",
-    scenario: "Camp Fire",
-    model: "ppo",
-    seed: 42,
-    metrics: { return: 145.2, completionRate: 0.80, containmentSteps: 420 },
-    duration: 298,
-    timestamp: new Date().toISOString(),
-    pinned: false,
-    tags: ["ppo", "baseline"],
-  },
-  {
-    id: "run_dixie_hybrid",
-    scenario: "Dixie Fire",
-    model: "hybrid",
-    seed: 42,
-    metrics: { return: 185.1, completionRate: 0.95, containmentSteps: 350 },
-    duration: 287,
-    timestamp: new Date().toISOString(),
-    pinned: true,
-    tags: ["hybrid", "phase-c", "best"],
-  },
-];
+interface ArtifactRunRecord {
+  runId: string;
+  modelType: "ppo" | "hybrid";
+  seed: number;
+  timestamp: string;
+  totalSteps: number;
+  scenarioId?: string;
+  containmentTime: number;
+  successRate: number;
+  avgReturnPerStep: number;
+}
+
+type DataSource = "supabase" | "artifacts" | "empty";
 
 export default function RunHistoryPage() {
   const router = useRouter();
-  const [runs, setRuns] = useState<RunRecord[]>(DEFAULT_RUNS);
-  const [isLoading, setIsLoading] = useState(true);
+  const persistenceAvailable = isSupabaseConfigured;
+  const fieldClassName =
+    "rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white transition outline-none focus:border-orange-300/50 focus:bg-white/[0.06]";
 
-  // Load runs from Supabase on mount
+  const [runs, setRuns] = useState<RunRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dataSource, setDataSource] = useState<DataSource>("empty");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterModel, setFilterModel] = useState<"all" | "ppo" | "hybrid">("all");
+  const [sortBy, setSortBy] = useState<"timestamp" | "return" | "completion">("timestamp");
+
   const loadRuns = useCallback(async () => {
     setIsLoading(true);
+
     try {
-      const data = await getRuns();
-      if (data.length > 0) {
-        const transformed = data.map((r): RunRecord => ({
-          id: r.id,
-          scenario: r.scenario,
-          model: r.model,
-          seed: r.seed,
-          metrics: {
-            return: r.return_value,
-            completionRate: r.completion_rate,
-            containmentSteps: r.containment_steps,
-          },
-          duration: r.duration,
-          timestamp: r.timestamp,
-          pinned: r.pinned,
-          tags: r.tags,
-        }));
-        setRuns(transformed);
+      const persistedRuns = await getRuns();
+      if (persistedRuns.length > 0) {
+        setRuns(
+          persistedRuns.map((record) => ({
+            id: record.id,
+            scenario: record.scenario,
+            model: record.model,
+            seed: record.seed,
+            metrics: {
+              return: record.return_value,
+              completionRate: record.completion_rate,
+              containmentSteps: record.containment_steps,
+            },
+            duration: record.duration,
+            timestamp: record.timestamp,
+            pinned: record.pinned,
+            tags: record.tags,
+          })),
+        );
+        setDataSource("supabase");
+        return;
       }
+
+      const response = await fetch("/api/runs", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Failed to fetch artifact-backed runs");
+      }
+
+      const artifactRuns = (await response.json()) as ArtifactRunRecord[];
+      if (artifactRuns.length > 0) {
+        setRuns(
+          artifactRuns.map((record) => ({
+            id: record.runId,
+            scenario: formatScenarioLabel(record.scenarioId),
+            model: record.modelType,
+            seed: record.seed,
+            metrics: {
+              return: record.avgReturnPerStep * record.totalSteps,
+              completionRate: record.successRate,
+              containmentSteps: record.containmentTime,
+            },
+            duration: record.totalSteps,
+            timestamp: record.timestamp,
+            pinned: false,
+            tags: ["artifacts", record.modelType, record.scenarioId || "unspecified"].filter(Boolean),
+          })),
+        );
+        setDataSource("artifacts");
+        return;
+      }
+
+      setRuns([]);
+      setDataSource("empty");
     } catch (error) {
-      console.error('Failed to load runs:', error);
+      console.error("Failed to load runs:", error);
+      setRuns([]);
+      setDataSource("empty");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadRuns();
+    void loadRuns();
   }, [loadRuns]);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterModel, setFilterModel] = useState<"all" | "ppo" | "hybrid">("all");
-  const [sortBy, setSortBy] = useState<"timestamp" | "return" | "completion">("timestamp");
+  const filteredRuns = useMemo(
+    () =>
+      runs
+        .filter((run) => {
+          const matchesSearch =
+            run.scenario.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            run.id.includes(searchTerm);
+          const matchesModel = filterModel === "all" || run.model === filterModel;
+          return matchesSearch && matchesModel;
+        })
+        .sort((a, b) => {
+          if (sortBy === "return") {
+            return b.metrics.return - a.metrics.return;
+          }
+          if (sortBy === "completion") {
+            return b.metrics.completionRate - a.metrics.completionRate;
+          }
+          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+        }),
+    [filterModel, runs, searchTerm, sortBy],
+  );
 
-  const filteredRuns = runs
-    .filter((run) => {
-      const matchesSearch = run.scenario.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        run.id.includes(searchTerm);
-      const matchesModel = filterModel === "all" || run.model === filterModel;
-      return matchesSearch && matchesModel;
-    })
-    .sort((a, b) => {
-      if (sortBy === "return") return b.metrics.return - a.metrics.return;
-      if (sortBy === "completion") return b.metrics.completionRate - a.metrics.completionRate;
-      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-    });
+  const pinnedCount = filteredRuns.filter((run) => run.pinned).length;
+  const bestReturn = filteredRuns.length > 0 ? Math.max(...filteredRuns.map((run) => run.metrics.return)) : 0;
+  const bestCompletion =
+    filteredRuns.length > 0
+      ? Math.max(...filteredRuns.map((run) => run.metrics.completionRate))
+      : 0;
+  const ppoBaselineReturn =
+    runs.filter((run) => run.model === "ppo").reduce((sum, run) => sum + run.metrics.return, 0) /
+      Math.max(1, runs.filter((run) => run.model === "ppo").length) || 0;
 
   const handleReproduceRun = (run: RunRecord) => {
     sessionStorage.setItem("reproduceRun", JSON.stringify(run));
@@ -128,187 +177,275 @@ export default function RunHistoryPage() {
   };
 
   const handleTogglePin = async (runId: string) => {
-    const run = runs.find(r => r.id === runId);
-    if (!run) return;
+    if (!persistenceAvailable || dataSource !== "supabase") {
+      return;
+    }
+
+    const run = runs.find((candidate) => candidate.id === runId);
+    if (!run) {
+      return;
+    }
+
     const newPinned = !run.pinned;
-    setRuns(runs.map((r) => (r.id === runId ? { ...r, pinned: newPinned } : r)));
+    setRuns(runs.map((candidate) => (candidate.id === runId ? { ...candidate, pinned: newPinned } : candidate)));
     await updateRunPin(runId, newPinned);
   };
 
   const handleExportRun = (run: RunRecord) => {
+    const improvementPercent =
+      run.model === "hybrid" && ppoBaselineReturn > 0
+        ? ((run.metrics.return / ppoBaselineReturn - 1) * 100).toFixed(1)
+        : null;
+
     const exportData = {
       ...run,
-      aurora_metrics: {
-        model_improvement: run.model === 'hybrid' 
-          ? `+${((run.metrics.return / REAL_METRICS.ppo.avgReturn - 1) * 100).toFixed(1)}% vs PPO baseline`
-          : 'Baseline model',
-        training_source: '116K historical fires (InterAgency 1308-2024)',
-        weather_source: 'NOAA National Weather Service API',
-      }
+      exported_at: new Date().toISOString(),
+      data_source: dataSource,
+      baseline_reference_return: ppoBaselineReturn || null,
+      model_improvement_percent: improvementPercent,
     };
+
     const dataStr = JSON.stringify(exportData, null, 2);
     const dataBlob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${run.id}_aurora_config.json`;
+    link.download = `${run.id}_aurora_run.json`;
     link.click();
   };
 
   const handleDeleteRun = async (runId: string) => {
+    if (!persistenceAvailable || dataSource !== "supabase") {
+      return;
+    }
+
     setRuns(runs.filter((run) => run.id !== runId));
     await deleteRun(runId);
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white">
-      <Navigation />
-
-      {/* Hero */}
-      <header className="border-b border-white/5">
-        <div className="max-w-6xl mx-auto px-6 py-12">
-          <div className="flex items-center gap-2 text-xs text-white/40 uppercase tracking-wider mb-3">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-            Run History
+    <ResearchPageShell
+      eyebrow="Run History"
+      title="Run history"
+      description="This table only shows persisted or artifact-backed runs. If no runs are available locally, the page reports that directly instead of filling the table with placeholders."
+      stats={[
+        {
+          label: "Visible runs",
+          value: filteredRuns.length.toString(),
+          note: "Filtered subset of the currently available run records.",
+        },
+        {
+          label: "Pinned",
+          value: pinnedCount.toString(),
+          note: "Pinned runs are available only for Supabase-backed records.",
+        },
+        {
+          label: "Best return",
+          value: filteredRuns.length > 0 ? bestReturn.toFixed(1) : "N/A",
+          note: "Highest return in the current filtered table.",
+        },
+        {
+          label: "Source",
+          value:
+            dataSource === "supabase"
+              ? "Supabase"
+              : dataSource === "artifacts"
+                ? "Artifacts"
+                : "No run data",
+          note:
+            dataSource === "supabase"
+              ? "Loaded from Supabase."
+              : dataSource === "artifacts"
+                ? "Loaded from local experiment artifacts in the results directory."
+                : "No persisted or artifact-backed runs were found.",
+        },
+      ]}
+      actions={
+        <>
+          <Link href="/sim" className="aurora-button-primary">
+            Open simulation
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link href="/method" className="aurora-button-secondary">
+            View method
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </>
+      }
+    >
+      <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+        <ResearchPanel className="space-y-5">
+          <div>
+            <p className="aurora-kicker">Data source</p>
+            <h2 className="mt-3 text-2xl font-semibold text-white">Current run table</h2>
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight mb-2">Experiment History</h1>
-          <p className="text-white/50 max-w-xl">
-            Complete history of all experiments with reproduction capabilities and audit trail.
-          </p>
-        </div>
-      </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-10">
-        {/* Controls */}
-        <div className="flex flex-wrap gap-4 mb-6">
-          <div className="flex-1 relative min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-            <input
-              type="text"
-              placeholder="Search scenarios..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-white/30 focus:border-white/20 focus:outline-none transition-colors"
-            />
+          <ResearchSubtlePanel>
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">Current mode</p>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              {dataSource === "supabase"
+                ? "Run history is being loaded from Supabase."
+                : dataSource === "artifacts"
+                  ? "Run history is being loaded from local experiment artifacts."
+                  : "No run records are available from Supabase or the local results directory."}
+            </p>
+          </ResearchSubtlePanel>
+
+          <ResearchSubtlePanel>
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400">Usage</p>
+            <ul className="mt-3 space-y-3 text-sm leading-7 text-slate-300">
+              <li>1. Filter the available run list.</li>
+              <li>2. Open a recorded run in the simulation page.</li>
+              <li>3. Export a run record when you need a local handoff.</li>
+            </ul>
+          </ResearchSubtlePanel>
+        </ResearchPanel>
+
+        <ResearchPanel className="space-y-5">
+          <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_0.7fr]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search scenarios or run IDs..."
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className={`${fieldClassName} w-full pl-11`}
+              />
+            </div>
+
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4">
+              <Filter className="h-4 w-4 text-slate-500" />
+              <select
+                value={filterModel}
+                onChange={(event) => setFilterModel(event.target.value as "all" | "ppo" | "hybrid")}
+                className="w-full bg-transparent py-3 text-sm text-white outline-none"
+              >
+                <option value="all">All models</option>
+                <option value="ppo">PPO only</option>
+                <option value="hybrid">Hybrid only</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4">
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as typeof sortBy)}
+                className="w-full bg-transparent py-3 text-sm text-white outline-none"
+              >
+                <option value="timestamp">Sort: Recent</option>
+                <option value="return">Sort: Best return</option>
+                <option value="completion">Sort: Best completion</option>
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3">
-            <Filter className="w-4 h-4 text-white/30" />
-            <select
-              value={filterModel}
-              onChange={(e) => setFilterModel(e.target.value as "all" | "ppo" | "hybrid")}
-              className="bg-transparent text-sm text-white outline-none py-2"
-            >
-              <option value="all">All Models</option>
-              <option value="ppo">PPO Only</option>
-              <option value="hybrid">Hybrid Only</option>
-            </select>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
+            <p>
+              Showing {filteredRuns.length} of {runs.length} runs.
+              {pinnedCount > 0 ? ` ${pinnedCount} pinned in this view.` : ""}
+            </p>
+            <p>
+              Best completion in view:{" "}
+              <span className="font-mono text-white">
+                {filteredRuns.length > 0 ? `${(bestCompletion * 100).toFixed(0)}%` : "N/A"}
+              </span>
+            </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3">
-            <span className="text-xs text-white/30">Sort:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="bg-transparent text-sm text-white outline-none py-2"
-            >
-              <option value="timestamp">Recent</option>
-              <option value="return">Best Return</option>
-              <option value="completion">Best Completion</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Results count */}
-        <div className="text-xs text-white/40 mb-4">
-          Showing {filteredRuns.length} of {runs.length} runs
-          {filteredRuns.filter((r) => r.pinned).length > 0 && (
-            <span className="ml-2">· {filteredRuns.filter((r) => r.pinned).length} pinned</span>
-          )}
-        </div>
-
-        {/* Table */}
-        <div className="rounded-xl bg-white/[0.02] border border-white/5 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-[24px] border border-white/10">
             <table className="w-full text-sm">
-              <thead className="bg-white/[0.02] text-white/40 text-xs uppercase tracking-wider">
+              <thead className="bg-white/[0.03] text-[0.72rem] uppercase tracking-[0.18em] text-slate-400">
                 <tr>
-                  <th className="text-left py-3 px-4">Run ID</th>
-                  <th className="text-left py-3 px-4">Scenario</th>
-                  <th className="text-left py-3 px-4">Model</th>
-                  <th className="text-right py-3 px-4">Return</th>
-                  <th className="text-right py-3 px-4">Completion</th>
-                  <th className="text-right py-3 px-4">Steps</th>
-                  <th className="text-left py-3 px-4">Tags</th>
-                  <th className="text-center py-3 px-4">Actions</th>
+                  <th className="px-5 py-4 text-left font-medium">Run ID</th>
+                  <th className="px-5 py-4 text-left font-medium">Scenario</th>
+                  <th className="px-5 py-4 text-left font-medium">Model</th>
+                  <th className="px-5 py-4 text-right font-medium">Return</th>
+                  <th className="px-5 py-4 text-right font-medium">Completion</th>
+                  <th className="px-5 py-4 text-right font-medium">Steps</th>
+                  <th className="px-5 py-4 text-left font-medium">Tags</th>
+                  <th className="px-5 py-4 text-center font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRuns.map((run) => (
-                  <tr key={run.id} className="border-t border-white/5 hover:bg-white/[0.02]">
-                    <td className="py-3 px-4">
+                  <tr key={run.id} className="border-t border-white/10 transition hover:bg-white/[0.03]">
+                    <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
-                        {run.pinned && <Pin className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
-                        <span className="font-mono text-xs text-white/60">{run.id}</span>
+                        {run.pinned ? <Pin className="h-3.5 w-3.5 fill-orange-200 text-orange-200" /> : null}
+                        <span className="font-mono text-xs text-slate-300">{run.id}</span>
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-medium text-white">{run.scenario}</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${run.model === "hybrid"
-                          ? "bg-purple-500/20 text-purple-300"
-                          : "bg-blue-500/20 text-blue-300"
-                        }`}>
-                        {run.model.toUpperCase()}
+                    <td className="px-5 py-4 font-medium text-white">{run.scenario}</td>
+                    <td className="px-5 py-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.12em] ${
+                          run.model === "hybrid"
+                            ? "bg-orange-400/15 text-orange-100"
+                            : "bg-sky-300/15 text-sky-100"
+                        }`}
+                      >
+                        {run.model}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right font-mono text-white">{run.metrics.return.toFixed(1)}</td>
-                    <td className="py-3 px-4 text-right font-mono text-white">{(run.metrics.completionRate * 100).toFixed(0)}%</td>
-                    <td className="py-3 px-4 text-right font-mono text-white/60">{run.metrics.containmentSteps}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-wrap gap-1">
+                    <td className="px-5 py-4 text-right font-mono text-white">{run.metrics.return.toFixed(1)}</td>
+                    <td className="px-5 py-4 text-right font-mono text-white">
+                      {(run.metrics.completionRate * 100).toFixed(0)}%
+                    </td>
+                    <td className="px-5 py-4 text-right font-mono text-slate-300">
+                      {run.metrics.containmentSteps}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex flex-wrap gap-2">
                         {run.tags.map((tag) => (
-                          <span key={tag} className="px-1.5 py-0.5 bg-white/5 text-white/40 rounded text-[10px]">
+                          <span
+                            key={tag}
+                            className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[0.72rem] text-slate-300"
+                          >
                             {tag}
                           </span>
                         ))}
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-center gap-1">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleReproduceRun(run)}
-                          className="p-1.5 bg-purple-500/20 hover:bg-purple-500/30 rounded transition-colors"
+                          className="rounded-full bg-orange-400/15 p-2 text-orange-100 transition hover:bg-orange-400/25"
                           title="Reproduce"
                         >
-                          <Play className="w-3.5 h-3.5 text-purple-400" />
+                          <Play className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleTogglePin(run.id)}
-                          className={`p-1.5 rounded transition-colors ${run.pinned
-                              ? "bg-yellow-500/20 hover:bg-yellow-500/30"
-                              : "bg-white/5 hover:bg-white/10"
-                            }`}
+                          disabled={!persistenceAvailable || dataSource !== "supabase"}
+                          className={`rounded-full bg-white/[0.06] p-2 text-slate-200 transition hover:bg-white/[0.12] ${
+                            !persistenceAvailable || dataSource !== "supabase"
+                              ? "cursor-not-allowed opacity-50 hover:bg-white/[0.06]"
+                              : ""
+                          }`}
                           title={run.pinned ? "Unpin" : "Pin"}
                         >
-                          {run.pinned ? (
-                            <PinOff className="w-3.5 h-3.5 text-yellow-400" />
-                          ) : (
-                            <Pin className="w-3.5 h-3.5 text-white/40" />
-                          )}
+                          {run.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
                         </button>
                         <button
                           onClick={() => handleExportRun(run)}
-                          className="p-1.5 bg-white/5 hover:bg-white/10 rounded transition-colors"
+                          className="rounded-full bg-white/[0.06] p-2 text-slate-200 transition hover:bg-white/[0.12]"
                           title="Export"
                         >
-                          <Download className="w-3.5 h-3.5 text-white/40" />
+                          <Download className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteRun(run.id)}
-                          className="p-1.5 bg-red-500/10 hover:bg-red-500/20 rounded transition-colors"
+                          disabled={!persistenceAvailable || dataSource !== "supabase"}
+                          className={`rounded-full bg-red-500/12 p-2 text-red-200 transition hover:bg-red-500/20 ${
+                            !persistenceAvailable || dataSource !== "supabase"
+                              ? "cursor-not-allowed opacity-50 hover:bg-red-500/12"
+                              : ""
+                          }`}
                           title="Delete"
                         >
-                          <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </td>
@@ -317,15 +454,36 @@ export default function RunHistoryPage() {
               </tbody>
             </table>
           </div>
-        </div>
 
-        {filteredRuns.length === 0 && (
-          <div className="mt-12 text-center">
-            <History className="w-12 h-12 mx-auto mb-4 text-white/20" />
-            <p className="text-white/40">No runs match your filters</p>
-          </div>
-        )}
-      </main>
-    </div>
+          {filteredRuns.length === 0 && !isLoading ? (
+            <ResearchSubtlePanel className="text-center">
+              <History className="mx-auto h-10 w-10 text-slate-500" />
+              <p className="mt-4 text-sm text-slate-300">
+                {runs.length === 0
+                  ? "No persisted or artifact-backed runs were found."
+                  : "No runs match the current filters."}
+              </p>
+            </ResearchSubtlePanel>
+          ) : null}
+
+          {isLoading ? <p className="text-sm text-slate-400">Loading run history...</p> : null}
+        </ResearchPanel>
+      </div>
+    </ResearchPageShell>
   );
+}
+
+function formatScenarioLabel(scenarioId?: string): string {
+  if (!scenarioId) {
+    return "Unspecified scenario";
+  }
+
+  return scenarioId
+    .split("-")
+    .map((part) =>
+      part.length <= 4 && /^\d+$/.test(part)
+        ? part
+        : part.charAt(0).toUpperCase() + part.slice(1),
+    )
+    .join(" ");
 }

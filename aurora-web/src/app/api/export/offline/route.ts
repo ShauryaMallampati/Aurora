@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+
+import { listRunMetadata } from '../../_lib/run-data';
 
 interface ExportConfig {
   includeModels: boolean;
   includeSimulationLogs: boolean;
   includeDocumentation: boolean;
   includeWebDemo: boolean;
-  format: 'zip' | 'tar.gz';
   maxLogSize: number;
 }
 
@@ -20,34 +19,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid config' }, { status: 400 });
     }
 
-    // Build export metadata
-    const exportMetadata = {
-      timestamp: new Date().toISOString(),
+    // Build the downloadable manifest.
+    const manifest = {
+      artifactType: 'offline-manifest',
+      generatedAt: new Date().toISOString(),
       config,
+      availableRuns: listRunMetadata().map((run) => run.runId),
       contents: {
         models: config.includeModels ? ['ppo_model', 'hybrid_llm_model'] : [],
-        logs: config.includeSimulationLogs ? 'simulation_logs_*.json' : [],
+        logs: config.includeSimulationLogs ? ['simulation_logs_*.json'] : [],
         documentation: config.includeDocumentation
           ? ['README.md', 'TRAINING_GUIDE.md', 'ARCHITECTURE.md']
           : [],
-        webDemo: config.includeWebDemo ? '_next build files' : [],
+        webDemo: config.includeWebDemo ? ['_next build files'] : [],
       },
       version: '1.0.0',
       source: 'AURORA - Wildfire AI Training System',
       isefYear: 2025,
       estimatedSize: calculateSize(config),
+      note: 'This endpoint returns a manifest only. No archive is generated server-side.',
     };
 
-    // Create response as JSON metadata
-    // In production, this would generate an actual ZIP/TAR.GZ file
-    // For now, return the manifest that would be included
-    const manifest = JSON.stringify(exportMetadata, null, 2);
-
-    // Return as downloadable file
-    return new NextResponse(manifest, {
+    return new NextResponse(JSON.stringify(manifest, null, 2), {
       headers: {
         'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="aurora-export-manifest.json"`,
+        'Content-Disposition': `attachment; filename="aurora-offline-manifest.json"`,
       },
     });
   } catch (error) {

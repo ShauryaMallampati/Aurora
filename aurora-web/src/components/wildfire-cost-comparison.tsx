@@ -46,24 +46,24 @@ export function WildfireCostComparison() {
 
     setRealData(realWildfireMetrics);
 
-    // Estimate AURORA vs Traditional for a 1000-acre fire
+    // Compare the current AURORA settings against the traditional baseline for a 1000-acre fire
     const traditionalCostPerAcre = 1175; // NIFC 2023 average
-    const aurortaCostPerAcre = 685; // projected: 42% reduction with optimized response
+    const auroraCostPerAcre = 685; // current comparison setting
     const fireSize = 1000; // acres
 
     const comparison: CostComparisonData = {
       scenario: "1000-acre wildfire",
       traditional: {
         cost: traditionalCostPerAcre * fireSize,
-        time: 28, // avg response time (min)
+        time: 28, // baseline response time (min)
         acresSaved: 200,
         costPerAcre: traditionalCostPerAcre,
       },
       aurora: {
-        cost: aurortaCostPerAcre * fireSize,
-        time: 4, // AURORA response time (AI drones)
-        acresSaved: 550, // better early containment
-        costPerAcre: aurortaCostPerAcre,
+        cost: auroraCostPerAcre * fireSize,
+        time: 4, // current AURORA response setting (min)
+        acresSaved: 550, // current comparison assumption
+        costPerAcre: auroraCostPerAcre,
       },
     };
 
@@ -80,9 +80,10 @@ export function WildfireCostComparison() {
   }
 
   const savings = costComparison
-    ? {
+      ? {
         totalSavings: costComparison.traditional.cost - costComparison.aurora.cost,
         timeSavings: costComparison.traditional.time - costComparison.aurora.time,
+        timeFasterRatio: costComparison.traditional.time / costComparison.aurora.time,
         acresExtra: costComparison.aurora.acresSaved - costComparison.traditional.acresSaved,
         costReduction: (
           ((costComparison.traditional.cost - costComparison.aurora.cost) /
@@ -100,16 +101,15 @@ export function WildfireCostComparison() {
 
   const comparisonMetrics = costComparison ? [
     { name: "Traditional", value: costComparison.traditional.cost, fill: "#ef4444" },
-    { name: "AURORA AI", value: costComparison.aurora.cost, fill: "#10b981" },
+    { name: "AURORA model", value: costComparison.aurora.cost, fill: "#10b981" },
   ] : [];
 
   return (
-    <div className="w-full bg-[#1a1a1b] rounded-lg p-6 space-y-8">
-      {/* Header */}
+    <div className="w-full space-y-8 rounded-md border border-slate-700 bg-slate-900 p-6">
       <div className="border-b border-gray-700 pb-6">
-        <h2 className="text-2xl font-bold text-white mb-2">💰 Real-World Cost Impact Analysis</h2>
+        <h2 className="text-2xl font-semibold text-white mb-2">Cost comparison overview</h2>
         <p className="text-gray-400 text-sm">
-          AURORA vs Traditional Wildfire Suppression (based on 116K historical fires + NIFC/USGS data)
+          Historical suppression costs and current AURORA model outputs.
         </p>
       </div>
 
@@ -117,49 +117,37 @@ export function WildfireCostComparison() {
       {savings && (
         <div className="grid grid-cols-2 gap-4">
           {/* Cost Savings */}
-          <div className="bg-[#1f2937] border border-gray-700 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xl">💰</span>
-              <span className="text-xs font-semibold text-gray-300">COST SAVINGS</span>
-            </div>
+          <div className="bg-[#0f172a] border border-slate-700 rounded-md p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-gray-300 mb-3">Cost savings</p>
             <p className="text-2xl font-bold text-white break-words">
               ${(savings.totalSavings / 1000).toFixed(1)}K
             </p>
             <p className="text-[10px] text-gray-400 mt-1 leading-tight">
-              Per 1000-acre fire ({savings.costReduction}% reduction)
+              For the current 1000-acre comparison ({savings.costReduction}% reduction)
             </p>
           </div>
 
           {/* Response Time */}
-          <div className="bg-[#1f2937] border border-gray-700 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xl">⚡</span>
-              <span className="text-xs font-semibold text-gray-300">RESPONSE TIME</span>
-            </div>
-            <p className="text-2xl font-bold text-white break-words">{savings.timeSavings}x Faster</p>
+          <div className="bg-[#0f172a] border border-slate-700 rounded-md p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-gray-300 mb-3">Response time</p>
+            <p className="text-2xl font-bold text-white break-words">{savings.timeSavings} min faster</p>
             <p className="text-[10px] text-gray-400 mt-1 leading-tight">
-              {costComparison!.traditional.time} → {costComparison!.aurora.time} min
+              {costComparison!.traditional.time} → {costComparison!.aurora.time} min ({savings.timeFasterRatio.toFixed(1)}x faster)
             </p>
           </div>
 
           {/* Acres Protected */}
-          <div className="bg-[#1f2937] border border-gray-700 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xl">🌲</span>
-              <span className="text-xs font-semibold text-gray-300">ACRES PROTECTED</span>
-            </div>
+          <div className="bg-[#0f172a] border border-slate-700 rounded-md p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-gray-300 mb-3">Acres protected</p>
             <p className="text-2xl font-bold text-white break-words">+{savings.acresExtra}</p>
             <p className="text-[10px] text-gray-400 mt-1 leading-tight">
-              Additional containment per 1000-acre fire
+              Additional containment in the comparison scenario
             </p>
           </div>
 
           {/* Cost Per Acre */}
-          <div className="bg-[#1f2937] border border-gray-700 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xl">📉</span>
-              <span className="text-xs font-semibold text-gray-300">COST PER ACRE</span>
-            </div>
+          <div className="bg-[#0f172a] border border-slate-700 rounded-md p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-gray-300 mb-3">Cost per acre</p>
             <p className="text-2xl font-bold text-white break-words">
               ${costComparison!.aurora.costPerAcre.toLocaleString()}
             </p>
@@ -202,14 +190,14 @@ export function WildfireCostComparison() {
                 <p className="text-2xl font-bold text-red-400">
                   ${costComparison.traditional.cost.toLocaleString()}
                 </p>
-                <p className="text-xs text-gray-500">28 min response</p>
+                <p className="text-xs text-gray-500">28 min baseline</p>
               </div>
               <div className="border-t border-gray-700 pt-4">
-                <p className="text-sm text-gray-400">AURORA Response</p>
+                <p className="text-sm text-gray-400">AURORA response</p>
                 <p className="text-2xl font-bold text-green-400">
                   ${costComparison.aurora.cost.toLocaleString()}
                 </p>
-                <p className="text-xs text-gray-500">4 min response</p>
+                <p className="text-xs text-gray-500">4 min setting</p>
               </div>
             </div>
           </div>
@@ -227,8 +215,8 @@ export function WildfireCostComparison() {
             <YAxis yAxisId="right" orientation="right" stroke="#888" />
             <Tooltip
               contentStyle={{ backgroundColor: "#1a1a1b", border: "1px solid #333" }}
-              formatter={(value) => {
-                if (typeof value === "number" && value > 100) return `$${value.toFixed(2)}B`;
+              formatter={(value, name) => {
+                if (String(name).includes("Cost")) return `$${Number(value).toFixed(2)}B`;
                 return `${value} min`;
               }}
             />
@@ -265,7 +253,7 @@ export function WildfireCostComparison() {
               <tr className="border-b border-gray-700">
                 <th className="text-left py-3 px-4 text-gray-400">Metric</th>
                 <th className="text-center py-3 px-4 text-gray-400">Traditional</th>
-                <th className="text-center py-3 px-4 text-gray-400">AURORA AI</th>
+                <th className="text-center py-3 px-4 text-gray-400">AURORA model</th>
                 <th className="text-center py-3 px-4 text-gray-400">Improvement</th>
               </tr>
             </thead>
@@ -303,11 +291,11 @@ export function WildfireCostComparison() {
                   {costComparison.aurora.time} minutes
                 </td>
                 <td className="text-center py-3 px-4 text-green-400 font-semibold">
-                  {savings.timeSavings}x faster
+                  {savings.timeSavings} min faster
                 </td>
               </tr>
               <tr className="border-b border-gray-800">
-                <td className="py-3 px-4 text-gray-300">Acres Saved (Early Containment)</td>
+                <td className="py-3 px-4 text-gray-300">Modeled acres protected</td>
                 <td className="text-center py-3 px-4 text-red-400">
                   {costComparison.traditional.acresSaved} acres
                 </td>
@@ -324,8 +312,8 @@ export function WildfireCostComparison() {
       )}
 
       {/* Scaling Impact */}
-      <div className="bg-[#1f2937] border border-gray-700 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">National Scaling Impact</h3>
+      <div className="bg-[#0f172a] border border-slate-700 rounded-md p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Scaling note</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
             <p className="text-gray-300 mb-2">Annual Federal Suppression Cost (Avg)</p>
@@ -333,24 +321,22 @@ export function WildfireCostComparison() {
             <p className="text-xs text-gray-500 mt-1">5-year average (2019-2023)</p>
           </div>
           <div>
-            <p className="text-gray-300 mb-2">Potential Annual Savings (42% reduction)</p>
+            <p className="text-gray-300 mb-2">Modeled annual savings</p>
             <p className="text-2xl font-bold text-white">$1.26B</p>
-            <p className="text-xs text-gray-500 mt-1">If AURORA deployed nationwide</p>
+            <p className="text-xs text-gray-500 mt-1">Using the current comparison assumptions</p>
           </div>
           <div>
-            <p className="text-gray-300 mb-2">Lives Protected (Indirect)</p>
-            <p className="text-2xl font-bold text-white">~2,400</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Based on wildfire casualties reduction at faster response
-            </p>
+            <p className="text-gray-300 mb-2">Safety impact</p>
+            <p className="text-2xl font-bold text-white">Not estimated</p>
+            <p className="text-xs text-gray-500 mt-1">The current model compares cost and response time only.</p>
           </div>
         </div>
       </div>
 
       {/* Data Attribution */}
-      <div className="bg-[#0a0a0b] rounded-lg p-4 border border-gray-800">
+      <div className="bg-[#0f172a] rounded-md p-4 border border-slate-700">
         <p className="text-xs text-gray-500">
-          📊 <strong>Data Sources:</strong> USGS Interagency Fire Perimeter History (116,337 fires, 1308-2024),
+          <strong>Sources:</strong> USGS Interagency Fire Perimeter History (116,337 fires, 1308-2024),
           NIFC Annual Reports, USDA Forest Service, National Wildfire Coordinating Group (NWCG), NFPA Fire Data
         </p>
       </div>

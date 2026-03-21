@@ -1,14 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, FileJson, Package, Globe, Save, Info, AlertCircle } from 'lucide-react';
+import { Download, FileJson, Globe, Info, AlertCircle } from 'lucide-react';
 
 interface ExportConfig {
   includeModels: boolean;
   includeSimulationLogs: boolean;
   includeDocumentation: boolean;
   includeWebDemo: boolean;
-  format: 'zip' | 'tar.gz';
   maxLogSize: number;
 }
 
@@ -18,7 +17,6 @@ export function OfflineExportPanel() {
     includeSimulationLogs: true,
     includeDocumentation: true,
     includeWebDemo: true,
-    format: 'zip',
     maxLogSize: 500, // MB
   });
 
@@ -38,16 +36,9 @@ export function OfflineExportPanel() {
   const handleExport = async () => {
     setIsExporting(true);
     setExportStatus('exporting');
-    setExportProgress(0);
+    setExportProgress(10);
 
     try {
-      // Simulate export progress
-      for (let i = 0; i <= 100; i += 10) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        setExportProgress(i);
-      }
-
-      // Trigger download
       const response = await fetch('/api/export/offline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -55,13 +46,12 @@ export function OfflineExportPanel() {
       });
 
       if (response.ok) {
+        setExportProgress(70);
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `aurora-offline-${new Date().toISOString().split('T')[0]}.${
-          exportConfig.format === 'zip' ? 'zip' : 'tar.gz'
-        }`;
+        a.download = 'aurora-offline-manifest.json';
         a.click();
         URL.revokeObjectURL(url);
 
@@ -81,12 +71,12 @@ export function OfflineExportPanel() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-900 to-teal-900 border border-emerald-700 rounded-lg p-6">
+      <div className="rounded-md border border-slate-700 bg-slate-900 p-6">
         <div className="flex items-center gap-3 mb-2">
-          <Package className="w-8 h-8 text-emerald-300" />
-          <h2 className="text-2xl font-bold text-white">Offline Export</h2>
+          <FileJson className="w-6 h-6 text-slate-300" />
+          <h2 className="text-2xl font-semibold text-white">Offline export</h2>
         </div>
-        <p className="text-emerald-200">Generate portable AURORA package for offline demo and judge review</p>
+        <p className="text-slate-400">Generate a downloadable manifest for offline review.</p>
       </div>
 
       {/* What's Included */}
@@ -106,8 +96,8 @@ export function OfflineExportPanel() {
               size: '~250 MB',
             },
             {
-              name: 'Simulation Logs',
-              description: 'JSON logs from training + evaluation runs',
+              name: 'Run Logs',
+              description: 'JSON logs from training and evaluation runs',
               checked: exportConfig.includeSimulationLogs,
               key: 'includeSimulationLogs',
               size: `~${exportConfig.maxLogSize} MB`,
@@ -120,7 +110,7 @@ export function OfflineExportPanel() {
               size: '~50 MB',
             },
             {
-              name: 'Web Demo',
+              name: 'Web Export',
               description: 'Next.js static export for browser viewing',
               checked: exportConfig.includeWebDemo,
               key: 'includeWebDemo',
@@ -151,35 +141,9 @@ export function OfflineExportPanel() {
 
       {/* Export Options */}
       <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-        <h3 className="font-semibold text-white mb-4">Export Options</h3>
+        <h3 className="font-semibold text-white mb-4">Manifest options</h3>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">File Format</label>
-            <div className="flex gap-4">
-              {(['zip', 'tar.gz'] as const).map((format) => (
-                <label key={format} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="format"
-                    value={format}
-                    checked={exportConfig.format === format}
-                    onChange={(e) =>
-                      setExportConfig({
-                        ...exportConfig,
-                        format: e.target.value as 'zip' | 'tar.gz',
-                      })
-                    }
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm text-gray-300">
-                    {format === 'zip' ? '.ZIP (Windows/Mac/Linux)' : '.TAR.GZ (Linux/Mac)'}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Max Log Size</label>
             <div className="flex items-center gap-4">
@@ -199,12 +163,12 @@ export function OfflineExportPanel() {
               />
               <span className="text-sm font-semibold text-white w-24">{exportConfig.maxLogSize} MB</span>
             </div>
-            <p className="text-xs text-gray-400 mt-2">Limit simulation logs to conserve space</p>
+            <p className="text-xs text-gray-400 mt-2">Limit run logs to conserve space</p>
           </div>
 
-          <div className="bg-blue-900/20 border border-blue-700 rounded p-3">
-            <p className="text-sm text-blue-300">
-              <strong>📦 Total Package Size:</strong> {estimateSize()}
+          <div className="rounded-md border border-slate-700 bg-slate-950 p-3">
+            <p className="text-sm text-slate-300">
+              <strong>Estimated offline bundle size:</strong> {estimateSize()}
             </p>
           </div>
         </div>
@@ -213,27 +177,27 @@ export function OfflineExportPanel() {
       {/* Export Progress */}
       {isExporting && (
         <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-          <h3 className="font-semibold text-white mb-4">Export Progress</h3>
+          <h3 className="font-semibold text-white mb-4">Manifest download progress</h3>
 
           <div className="space-y-4">
             <div>
               <div className="flex justify-between mb-2">
-                <span className="text-sm text-gray-300">Packaging files...</span>
+                <span className="text-sm text-gray-300">Preparing manifest...</span>
                 <span className="text-sm font-semibold text-white">{exportProgress}%</span>
               </div>
-              <div className="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+              <div className="w-full h-3 overflow-hidden rounded-md bg-slate-700">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
+                  className="h-full bg-blue-600 transition-all duration-300"
                   style={{ width: `${exportProgress}%` }}
                 />
               </div>
             </div>
 
             <div className="text-sm text-gray-400">
-              {exportProgress < 30 && 'Collecting model files...'}
-              {exportProgress >= 30 && exportProgress < 60 && 'Compressing simulation logs...'}
-              {exportProgress >= 60 && exportProgress < 90 && 'Building documentation...'}
-              {exportProgress >= 90 && 'Finalizing package...'}
+              {exportProgress < 30 && 'Reading selected export settings...'}
+              {exportProgress >= 30 && exportProgress < 60 && 'Listing available runs...'}
+              {exportProgress >= 60 && exportProgress < 90 && 'Building manifest JSON...'}
+              {exportProgress >= 90 && 'Ready to download...'}
             </div>
           </div>
         </div>
@@ -243,7 +207,7 @@ export function OfflineExportPanel() {
       {exportStatus === 'completed' && (
         <div className="bg-emerald-900/20 border border-emerald-700 rounded-lg p-6">
           <p className="text-emerald-300 flex items-center gap-2">
-            ✅ <strong>Export Complete!</strong> Your offline package has been downloaded.
+            <strong>Manifest downloaded.</strong> The offline export manifest has been saved.
           </p>
         </div>
       )}
@@ -257,25 +221,24 @@ export function OfflineExportPanel() {
         </div>
       )}
 
-      {/* Package Contents Preview */}
+      {/* Manifest Preview */}
       <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-        <h3 className="font-semibold text-white mb-4">Package Structure</h3>
+        <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+          <FileJson className="w-5 h-5 text-blue-400" />
+          Manifest preview
+        </h3>
 
         <div className="font-mono text-sm text-gray-300 space-y-1 bg-black/30 p-4 rounded">
-          <p>aurora-offline/</p>
-          <p className="pl-4">├── models/</p>
-          <p className="pl-8">│   ├── ppo_model/</p>
-          <p className="pl-8">│   └── hybrid_llm_model/</p>
-          <p className="pl-4">├── logs/</p>
-          <p className="pl-8">│   └── simulation_*.json</p>
-          <p className="pl-4">├── web/</p>
-          <p className="pl-8">│   ├── index.html</p>
-          <p className="pl-8">│   └── _next/ (Next.js build)</p>
-          <p className="pl-4">├── docs/</p>
-          <p className="pl-8">│   ├── README.md</p>
-          <p className="pl-8">│   ├── TRAINING_GUIDE.md</p>
-          <p className="pl-8">│   └── ARCHITECTURE.md</p>
-          <p className="pl-4">└── USAGE.md</p>
+          <p>aurora-offline-manifest.json</p>
+          <p className="pl-4">{"{"}</p>
+          <p className="pl-8">timestamp</p>
+          <p className="pl-8">config</p>
+          <p className="pl-8">availableRuns</p>
+          <p className="pl-8">contents</p>
+          <p className="pl-8">version</p>
+          <p className="pl-8">source</p>
+          <p className="pl-8">estimatedSize</p>
+          <p className="pl-4">{"}"}</p>
         </div>
       </div>
 
@@ -283,14 +246,12 @@ export function OfflineExportPanel() {
       <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-6">
         <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
           <Globe className="w-5 h-5 text-blue-400" />
-          For Competition Judges
+          Offline review
         </h3>
         <ul className="text-sm text-blue-300 space-y-2">
-          <li>✅ Self-contained package - no internet required</li>
-          <li>✅ Open web demo in any browser with offline HTML version</li>
-          <li>✅ View training logs, model architecture, and performance metrics</li>
-          <li>✅ Run simulation videos and comparison analyses</li>
-          <li>✅ Complete documentation for technical evaluation</li>
+          <li>Downloads a JSON manifest only, not a packaged archive.</li>
+          <li>The manifest records the selected models, logs, docs, and demo flags.</li>
+          <li>Use it as the source of truth for any downstream offline assembly.</li>
         </ul>
       </div>
 
@@ -299,10 +260,10 @@ export function OfflineExportPanel() {
         <button
           onClick={handleExport}
           disabled={isExporting || exportStatus === 'completed'}
-          className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition"
+          className="flex flex-1 items-center justify-center gap-2 rounded-md border border-blue-600 bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:border-slate-700 disabled:bg-slate-700"
         >
           <Download className="w-5 h-5" />
-          {isExporting ? 'Exporting...' : exportStatus === 'completed' ? 'Export Complete' : 'Export Offline Package'}
+          {isExporting ? 'Generating manifest...' : exportStatus === 'completed' ? 'Manifest downloaded' : 'Download manifest'}
         </button>
 
         {exportStatus === 'completed' && (
@@ -311,7 +272,7 @@ export function OfflineExportPanel() {
               setExportStatus('idle');
               setExportProgress(0);
             }}
-            className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition"
+            className="rounded-md border border-slate-700 px-6 py-3 font-semibold text-white transition hover:bg-slate-800"
           >
             Export Again
           </button>
@@ -319,11 +280,9 @@ export function OfflineExportPanel() {
       </div>
 
       {/* USB Kit Info */}
-      <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-6">
-        <p className="text-sm text-purple-300 leading-relaxed">
-          <strong>💾 USB Kit for Judges:</strong> All export files can be copied directly to a USB drive for offline
-          judge review. Recommended folder structure: <code className="text-purple-200">USB:/aurora/</code>. Include
-          USAGE.md for quick start instructions. Total package fits on any standard USB (most exports 400-500 MB).
+      <div className="rounded-md border border-slate-700 bg-slate-950 p-6">
+        <p className="text-sm leading-relaxed text-slate-300">
+          The downloaded file is a manifest that can be inspected or handed off to an offline bundling step.
         </p>
       </div>
     </div>

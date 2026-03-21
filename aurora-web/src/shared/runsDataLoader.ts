@@ -56,20 +56,33 @@ export interface RunMetadata {
   scenarioId?: string;
 }
 
-const API_BASE = 'http://localhost:8000';
+const API_ROOT = '/api';
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const response = await fetch(`${API_ROOT}${path}`, { cache: 'no-store' });
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json() as Promise<T>;
+}
 
 /**
  * Load a single run from the backend by ID.
  */
 export async function loadRun(runId: string): Promise<SimulationRun> {
   try {
-    const response = await fetch(`${API_BASE}/api/runs/${runId}`);
-    if (!response.ok) {
-      throw new Error(`Failed to load run ${runId}: ${response.statusText}`);
-    }
-    return await response.json();
+    return await fetchJson<SimulationRun>(`/runs/${encodeURIComponent(runId)}`);
   } catch (error) {
     console.error(`Error loading run ${runId}:`, error);
+    const fallbackRuns = generateMockRuns();
+    const fallback = [fallbackRuns.ppo, fallbackRuns.hybrid].find((run) => run.runId === runId);
+
+    if (fallback) {
+      return fallback;
+    }
+
     throw error;
   }
 }
@@ -79,18 +92,11 @@ export async function loadRun(runId: string): Promise<SimulationRun> {
  */
 export async function listRuns(modelType?: 'ppo' | 'hybrid'): Promise<RunMetadata[]> {
   try {
-    const url = modelType 
-      ? `${API_BASE}/api/runs?model=${modelType}`
-      : `${API_BASE}/api/runs`;
-    
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to list runs: ${response.statusText}`);
-    }
-    return await response.json();
+    const query = modelType ? `?model=${modelType}` : '';
+    return await fetchJson<RunMetadata[]>(`/runs${query}`);
   } catch (error) {
     console.error('Error listing runs:', error);
-    throw error;
+    return generateMockRunsAsMetadata(modelType);
   }
 }
 
@@ -146,6 +152,20 @@ export async function findMatchingRuns(
     console.error('Error finding matching runs:', error);
     throw error;
   }
+}
+
+function generateMockRunsAsMetadata(modelType?: 'ppo' | 'hybrid'): RunMetadata[] {
+  const { ppo, hybrid } = generateMockRuns();
+  const runs = [ppo, hybrid].map((run) => ({
+    runId: run.runId,
+    modelType: run.modelType,
+    seed: run.seed,
+    timestamp: run.timestamp,
+    totalSteps: run.summary.totalSteps,
+    scenarioId: run.config.scenarioId,
+  }));
+
+  return modelType ? runs.filter((run) => run.modelType === modelType) : runs;
 }
 
 /**

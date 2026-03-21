@@ -32,7 +32,7 @@ interface SimulationState {
   currentComparisonStep: number;
 
   // UI state
-  selectedTab: 'metrics' | 'telemetry' | 'guidance' | 'charts' | 'costs' | 'logs';
+  selectedTab: 'method' | 'metrics' | 'telemetry' | 'guidance' | 'charts' | 'costs' | 'logs';
   logs: string[];
 
   // Actions
@@ -66,7 +66,7 @@ export const useSimulationStore = create<SimulationState>((set: any) => ({
   hybridRun: null,
   comparisonMetrics: null,
   currentComparisonStep: 0,
-  selectedTab: 'metrics',
+  selectedTab: 'method',
   logs: [],
 
   setRunId: (runId: string) => set({ runId }),
@@ -107,11 +107,14 @@ export const useSimulationStore = create<SimulationState>((set: any) => ({
     latestGuidance: null,
     ticks: [],
     guidanceHistory: [],
+    config: null,
+    playbackSpeed: 1,
     comparisonMode: false,
     ppoRun: null,
     hybridRun: null,
     comparisonMetrics: null,
     currentComparisonStep: 0,
+    selectedTab: 'method',
     logs: [],
   }),
 }));

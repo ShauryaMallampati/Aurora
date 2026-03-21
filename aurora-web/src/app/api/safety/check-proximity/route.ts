@@ -44,6 +44,47 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * c;
 }
 
+function evaluateProximity(body: ProximityRequest): ProximityResponse {
+  const proximityLimit = body.proximity_limit_m || 200;
+
+  let nearestZone: ResidentialZone | null = null;
+  let minDistance = Infinity;
+  let withinRestrictedZone = false;
+
+  for (const zone of RESIDENTIAL_ZONES) {
+    const distance = calculateDistance(body.latitude, body.longitude, zone.lat, zone.lng);
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestZone = zone;
+    }
+
+    if (distance < zone.radius_meters + proximityLimit) {
+      withinRestrictedZone = true;
+      break;
+    }
+  }
+
+  const safe = !withinRestrictedZone || body.manual_override;
+
+  let reason = '';
+  if (withinRestrictedZone && !body.manual_override) {
+    reason = `Too close to ${nearestZone?.name} (${(minDistance / 1000).toFixed(2)}km away). Minimum distance: ${proximityLimit}m`;
+  } else if (withinRestrictedZone && body.manual_override) {
+    reason = `Override active: Can operate near ${nearestZone?.name}`;
+  } else {
+    reason = `Safe to operate. Nearest zone: ${nearestZone?.name} (${(minDistance / 1000).toFixed(2)}km away)`;
+  }
+
+  return {
+    safe,
+    within_restricted_zone: withinRestrictedZone,
+    nearest_zone: nearestZone,
+    distance_to_zone_m: minDistance === Infinity ? null : Math.round(minDistance),
+    reason,
+  };
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse<ProximityResponse | { error: string }>> {
   try {
     const body: ProximityRequest = await request.json();
@@ -57,47 +98,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Proximity
       return NextResponse.json({ error: 'Invalid coordinates' }, { status: 400 });
     }
 
-    const proximityLimit = body.proximity_limit_m || 200;
-
-    // Check proximity to residential zones
-    let nearestZone: ResidentialZone | null = null;
-    let minDistance = Infinity;
-    let withinRestrictedZone = false;
-
-    for (const zone of RESIDENTIAL_ZONES) {
-      const distance = calculateDistance(body.latitude, body.longitude, zone.lat, zone.lng);
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestZone = zone;
-      }
-
-      // Check if within zone + buffer
-      if (distance < zone.radius_meters + proximityLimit) {
-        withinRestrictedZone = true;
-        break;
-      }
-    }
-
-    // Determine safety
-    const safe = !withinRestrictedZone || body.manual_override;
-
-    let reason = '';
-    if (withinRestrictedZone && !body.manual_override) {
-      reason = `Too close to ${nearestZone?.name} (${(minDistance / 1000).toFixed(2)}km away). Minimum distance: ${proximityLimit}m`;
-    } else if (withinRestrictedZone && body.manual_override) {
-      reason = `Override active: Can operate near ${nearestZone?.name}`;
-    } else {
-      reason = `Safe to operate. Nearest zone: ${nearestZone?.name} (${(minDistance / 1000).toFixed(2)}km away)`;
-    }
-
-    return NextResponse.json({
-      safe,
-      within_restricted_zone: withinRestrictedZone,
-      nearest_zone: nearestZone,
-      distance_to_zone_m: minDistance === Infinity ? null : Math.round(minDistance),
-      reason,
-    });
+    return NextResponse.json(evaluateProximity(body));
   } catch (error) {
     console.error('Safety proximity check error:', error);
     return NextResponse.json(
@@ -122,19 +123,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const longitude = parseFloat(lng);
     const proximityLimit = parseInt(limit);
 
-    const result = await POST(
-      new NextRequest(new URL('http://localhost'), {
-        method: 'POST',
-        body: JSON.stringify({
-          latitude,
-          longitude,
-          proximity_limit_m: proximityLimit,
-          manual_override: override,
-        }),
-      })
+    return NextResponse.json(
+      evaluateProximity({
+        latitude,
+        longitude,
+        proximity_limit_m: proximityLimit,
+        manual_override: override,
+      }),
     );
-
-    return result;
   } catch (error) {
     console.error('GET request error:', error);
     return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });

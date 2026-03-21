@@ -2,80 +2,103 @@
 
 import { useEffect, useState } from "react";
 import { useSimulationStore } from "@/shared/store";
+import { normalizeScenarioId } from "@/shared/scenarios";
 import { ControlBar } from "./ControlBar";
 import { MapStage } from "./MapStage";
 import { RightPanel } from "./RightPanel";
 import { SplitViewComparison } from "./SplitViewComparison";
-import { FireCreator, CustomFireConfig } from "./FireCreator";
+
+interface SimulationPreset {
+  scenarioId?: string;
+  scenarioName?: string;
+  model?: "ppo" | "hybrid";
+  seed?: number;
+  note?: string;
+  runId?: string;
+}
 
 export default function SimulationPage() {
   const reset = useSimulationStore((state) => state.reset);
-  const addLog = useSimulationStore((state) => state.addLog);
   const [showSplitView, setShowSplitView] = useState(false);
-  const [showFireCreator, setShowFireCreator] = useState(false);
+  const [initialPreset, setInitialPreset] = useState<SimulationPreset | null>(null);
 
   useEffect(() => {
-    // Reset on mount
+    reset();
     return () => reset();
   }, [reset]);
 
-  const handleCreateFire = (fireConfig: CustomFireConfig) => {
-    addLog(`Custom fire created at (${fireConfig.location.lat}, ${fireConfig.location.lng})`);
-    addLog(`Strength: ${fireConfig.strength}/10, Wind: ${fireConfig.windFactor}x`);
-    addLog(`Resources: ${fireConfig.numDrones} drones, ${fireConfig.waterAmount}gal each`);
-    addLog(`Estimated cost: $${fireConfig.estimatedCost.toLocaleString()}`);
-    setShowFireCreator(false);
-    // TODO: When model is trained, pass fireConfig to simulation
-  };
+  useEffect(() => {
+    const preset: SimulationPreset = {};
+    const params = new URLSearchParams(window.location.search);
+    const scenarioParam = params.get("scenario");
+    const runParam = params.get("run");
 
-  const handleStartSimulationFromFireCreator = (fireConfig: CustomFireConfig) => {
-    addLog(`🔥 Starting simulation with custom fire`);
-    addLog(`Location: (${fireConfig.location.lat.toFixed(4)}, ${fireConfig.location.lng.toFixed(4)})`);
-    addLog(`Strength: ${fireConfig.strength}/10, Wind: ${fireConfig.windFactor}x`);
-    addLog(`Drones: ${fireConfig.numDrones}, Water: ${fireConfig.waterAmount}gal each`);
-    addLog(`Estimated cost: $${fireConfig.estimatedCost.toLocaleString()}`);
-    setShowFireCreator(false);
+    if (scenarioParam) {
+      preset.scenarioId = normalizeScenarioId(scenarioParam) ?? scenarioParam;
+      preset.note = `Scenario handoff received for ${scenarioParam}. Review settings, then start the simulation.`;
+    }
 
-    // TODO: Implement actual simulation start with this config
-    // For now just log it; backend integration needed
-  };
+    if (runParam) {
+      preset.runId = runParam;
+      preset.model = runParam.startsWith("ppo_")
+        ? "ppo"
+        : runParam.startsWith("hybrid_")
+          ? "hybrid"
+          : undefined;
+      preset.note = `Run handoff received for ${runParam}. The simulator will use matching settings when available, then start a new local session.`;
+    }
 
-  // If split view is enabled, show comparison instead
+    const storedRun = sessionStorage.getItem("reproduceRun");
+    if (storedRun) {
+      try {
+        const parsed = JSON.parse(storedRun) as {
+          scenario?: string;
+          model?: "ppo" | "hybrid";
+          seed?: number;
+          id?: string;
+        };
+
+        preset.scenarioName = normalizeScenarioId(parsed.scenario) ?? parsed.scenario;
+        preset.model = parsed.model ?? preset.model;
+        preset.seed = parsed.seed ?? preset.seed;
+        preset.runId = parsed.id ?? preset.runId;
+        preset.note = `Run reproduction loaded from history for ${parsed.scenario ?? parsed.id ?? "the selected run"}.`;
+      } catch (error) {
+        console.error("Failed to parse reproduceRun payload:", error);
+      } finally {
+        sessionStorage.removeItem("reproduceRun");
+      }
+    }
+
+    if (preset.scenarioId || preset.scenarioName || preset.model || preset.seed || preset.runId) {
+      setInitialPreset(preset);
+    } else {
+      setInitialPreset(null);
+    }
+  }, []);
+
   if (showSplitView) {
     return (
-      <div className="h-screen flex flex-col bg-[#0a0a0b]">
+      <div className="flex h-screen flex-col bg-slate-950">
         <SplitViewComparison onClose={() => setShowSplitView(false)} />
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0b]">
-      {/* Top Control Bar */}
+    <div className="flex h-screen flex-col bg-slate-950">
       <ControlBar
         onToggleSplitView={() => setShowSplitView(true)}
-        onOpenFireCreator={() => setShowFireCreator(true)}
+        initialPreset={initialPreset}
       />
 
-      {/* Main Content: Map + Right Panel */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Map Stage */}
+      <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 relative">
           <MapStage />
         </div>
 
-        {/* Right Panel */}
         <RightPanel />
       </div>
-
-      {/* Fire Creator Modal */}
-      {showFireCreator && (
-        <FireCreator
-          onClose={() => setShowFireCreator(false)}
-          onCreateFire={handleCreateFire}
-          onStartSimulation={handleStartSimulationFromFireCreator}
-        />
-      )}
     </div>
   );
 }

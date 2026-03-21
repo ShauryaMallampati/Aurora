@@ -9,110 +9,98 @@ interface FireLayerCanvasProps {
 }
 
 export function FireLayerCanvas({ tick, map }: FireLayerCanvasProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<google.maps.OverlayView | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    if (!map || !canvasRef.current) return;
+    if (!map) {
+      return;
+    }
 
-    // Parse fire grid
     const gridData = parseFireGrid(tick.fireGrid);
-    if (!gridData) return;
+    if (!gridData) {
+      return;
+    }
 
-    // Create custom overlay
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    canvas.style.opacity = "0.7";
+    canvas.style.pointerEvents = "none";
+    canvasRef.current = canvas;
+
     class FireOverlay extends google.maps.OverlayView {
-      private canvas: HTMLCanvasElement;
+      private canvasElement: HTMLCanvasElement;
       private bounds: google.maps.LatLngBounds;
 
-      constructor(canvas: HTMLCanvasElement, bounds: google.maps.LatLngBounds) {
+      constructor(canvasElement: HTMLCanvasElement, bounds: google.maps.LatLngBounds) {
         super();
-        this.canvas = canvas;
+        this.canvasElement = canvasElement;
         this.bounds = bounds;
       }
 
       onAdd() {
         const panes = this.getPanes();
-        if (panes) {
-          panes.overlayLayer.appendChild(this.canvas);
+        if (panes && !this.canvasElement.parentNode) {
+          panes.overlayLayer.appendChild(this.canvasElement);
         }
       }
 
       draw() {
-        const overlayProjection = this.getProjection();
-        if (!overlayProjection) return;
-
-        const sw = overlayProjection.fromLatLngToDivPixel(this.bounds.getSouthWest()!);
-        const ne = overlayProjection.fromLatLngToDivPixel(this.bounds.getNorthEast()!);
-
-        if (sw && ne) {
-          this.canvas.style.left = sw.x + "px";
-          this.canvas.style.top = ne.y + "px";
-          this.canvas.style.width = ne.x - sw.x + "px";
-          this.canvas.style.height = sw.y - ne.y + "px";
-          this.canvas.style.position = "absolute";
+        const projection = this.getProjection();
+        if (!projection) {
+          return;
         }
+
+        const sw = projection.fromLatLngToDivPixel(this.bounds.getSouthWest());
+        const ne = projection.fromLatLngToDivPixel(this.bounds.getNorthEast());
+
+        if (!sw || !ne) {
+          return;
+        }
+
+        this.canvasElement.style.position = "absolute";
+        this.canvasElement.style.left = `${sw.x}px`;
+        this.canvasElement.style.top = `${ne.y}px`;
+        this.canvasElement.style.width = `${ne.x - sw.x}px`;
+        this.canvasElement.style.height = `${sw.y - ne.y}px`;
       }
 
       onRemove() {
-        try {
-          if (this.canvas && this.canvas.parentNode) {
-            try {
-              this.canvas.parentNode.removeChild(this.canvas);
-            } catch (e) {
-              // Already removed
-            }
-          }
-        } catch (error) {
-          // Canvas or parentNode missing, ignore
+        if (this.canvasElement.parentNode?.contains(this.canvasElement)) {
+          this.canvasElement.parentNode.removeChild(this.canvasElement);
         }
       }
     }
 
-    // Bounds: 10km x 10km around fire origin
     const center = new google.maps.LatLng(tick.fireOrigin.lat, tick.fireOrigin.lng);
-    const latOffset = 0.045; // ~5km
+    const latOffset = 0.045;
     const lngOffset = 0.045;
     const bounds = new google.maps.LatLngBounds(
       new google.maps.LatLng(center.lat() - latOffset, center.lng() - lngOffset),
-      new google.maps.LatLng(center.lat() + latOffset, center.lng() + lngOffset)
+      new google.maps.LatLng(center.lat() + latOffset, center.lng() + lngOffset),
     );
 
-    // Render fire to canvas
-    renderFireGrid(canvasRef.current, gridData);
+    renderFireGrid(canvas, gridData);
 
-    // Create + add overlay
-    const overlay = new FireOverlay(canvasRef.current, bounds);
+    const overlay = new FireOverlay(canvas, bounds);
     overlay.setMap(map);
     overlayRef.current = overlay;
 
     return () => {
-      try {
-        if (overlayRef.current) {
-          overlayRef.current.setMap(null);
-        }
-      } catch (error) {
-        // Overlay already removed, ignore
-      } finally {
-        overlayRef.current = null;
-      }
+      overlayRef.current?.setMap(null);
+      overlayRef.current = null;
+      canvasRef.current = null;
     };
-  }, [tick, map]);
+  }, [map, tick]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      width={512}
-      height={512}
-      style={{ opacity: 0.7, pointerEvents: "none" }}
-    />
-  );
+  return null;
 }
 
 function parseFireGrid(base64: string): number[][] | null {
   try {
     const json = atob(base64);
-    const grid = JSON.parse(json);
-    return grid;
+    return JSON.parse(json);
   } catch {
     return null;
   }
@@ -120,53 +108,52 @@ function parseFireGrid(base64: string): number[][] | null {
 
 function renderFireGrid(canvas: HTMLCanvasElement, grid: number[][]) {
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  if (!ctx) {
+    return;
+  }
 
   const height = grid.length;
   const width = grid[0]?.length || 0;
-  
+  if (!height || !width) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
   const cellWidth = canvas.width / width;
   const cellHeight = canvas.height / height;
 
-  // Clear canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Pass 1: glow for high-intensity fires
-  ctx.filter = 'blur(2px)';
-  for (let i = 0; i < height; i++) {
-    for (let j = 0; j < width; j++) {
+  ctx.filter = "blur(2px)";
+  for (let i = 0; i < height; i += 1) {
+    for (let j = 0; j < width; j += 1) {
       const intensity = grid[i][j];
       if (intensity > 0.3) {
-        const glowColor = getFireColor(Math.min(1, intensity + 0.2));
-        ctx.fillStyle = glowColor;
+        ctx.fillStyle = getFireColor(Math.min(1, intensity + 0.2));
         ctx.globalAlpha = 0.5;
         ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
       }
     }
   }
-  
-  // Reset filter for sharp render
-  ctx.filter = 'none';
-  ctx.globalAlpha = 1.0;
 
-  // Pass 2: full-intensity cells
-  for (let i = 0; i < height; i++) {
-    for (let j = 0; j < width; j++) {
+  ctx.filter = "none";
+  ctx.globalAlpha = 1;
+
+  for (let i = 0; i < height; i += 1) {
+    for (let j = 0; j < width; j += 1) {
       const intensity = grid[i][j];
       if (intensity > 0) {
-        const color = getFireColor(intensity);
-        ctx.fillStyle = color;
+        ctx.fillStyle = getFireColor(intensity);
         ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
-        
-        // Add bright spot at very high intensity
+
         if (intensity > 0.8) {
-          ctx.fillStyle = 'rgba(255, 255, 100, 0.6)';
+          ctx.fillStyle = "rgba(255, 255, 100, 0.6)";
           const spotSize = cellWidth * 0.6;
           ctx.fillRect(
             j * cellWidth + (cellWidth - spotSize) / 2,
             i * cellHeight + (cellHeight - spotSize) / 2,
             spotSize,
-            spotSize
+            spotSize,
           );
         }
       }
@@ -175,36 +162,23 @@ function renderFireGrid(canvas: HTMLCanvasElement, grid: number[][]) {
 }
 
 function getFireColor(intensity: number): string {
-  // Intensity: 0 (none) to 1 (max)
   const clamped = Math.max(0, Math.min(1, intensity));
-  
+
   if (clamped < 0.2) {
-    // Light yellow to orange (low fire)
     const t = clamped / 0.2;
-    const r = 255;
-    const g = Math.floor(200 + (100 - 200) * t);
-    const b = 0;
-    return `rgb(${r}, ${g}, ${b})`;
-  } else if (clamped < 0.5) {
-    // Orange to bright orange-red (medium fire)
-    const t = (clamped - 0.2) / 0.3;
-    const r = 255;
-    const g = Math.floor(100 + (80 - 100) * t);
-    const b = 0;
-    return `rgb(${r}, ${g}, ${b})`;
-  } else if (clamped < 0.75) {
-    // Red to dark red (high fire)
-    const t = (clamped - 0.5) / 0.25;
-    const r = 255;
-    const g = Math.floor(80 - 80 * t);
-    const b = 0;
-    return `rgb(${r}, ${g}, ${b})`;
-  } else {
-    // Dark red to maroon (extreme fire)
-    const t = (clamped - 0.75) / 0.25;
-    const r = Math.floor(255 - 100 * t);
-    const g = 0;
-    const b = 0;
-    return `rgb(${r}, ${g}, ${b})`;
+    return `rgb(255, ${Math.floor(200 + (100 - 200) * t)}, 0)`;
   }
+
+  if (clamped < 0.5) {
+    const t = (clamped - 0.2) / 0.3;
+    return `rgb(255, ${Math.floor(100 + (80 - 100) * t)}, 0)`;
+  }
+
+  if (clamped < 0.75) {
+    const t = (clamped - 0.5) / 0.25;
+    return `rgb(255, ${Math.floor(80 - 80 * t)}, 0)`;
+  }
+
+  const t = (clamped - 0.75) / 0.25;
+  return `rgb(${Math.floor(255 - 100 * t)}, 0, 0)`;
 }

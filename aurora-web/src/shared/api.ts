@@ -1,4 +1,4 @@
-// Backend API client (real + mock).
+// Backend API client.
 
 import type {
   SimulationConfig,
@@ -10,7 +10,7 @@ import type {
   Drone,
 } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
+const API_ROOT = '/api';
 
 // SSE stream handler
 export class SimulationStream {
@@ -314,7 +314,7 @@ export class SimulationStream {
 
 // API functions
 export async function startSimulation(config: SimulationConfig): Promise<StartSimResponse> {
-  const response = await fetch(`${API_BASE}/api/sim/start`, {
+  const response = await fetch(`${API_ROOT}/sim/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),
@@ -328,7 +328,7 @@ export async function startSimulation(config: SimulationConfig): Promise<StartSi
 }
 
 export async function controlSimulation(command: ControlCommand): Promise<void> {
-  const response = await fetch(`${API_BASE}/api/sim/control`, {
+  const response = await fetch(`${API_ROOT}/sim/control`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(command),
@@ -340,7 +340,7 @@ export async function controlSimulation(command: ControlCommand): Promise<void> 
 }
 
 export async function listRuns(): Promise<RunSummary[]> {
-  const response = await fetch(`${API_BASE}/api/runs`);
+  const response = await fetch(`${API_ROOT}/runs`);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch runs: ${response.statusText}`);
@@ -350,7 +350,7 @@ export async function listRuns(): Promise<RunSummary[]> {
 }
 
 export async function getRunDetail(runId: string): Promise<RunSummary> {
-  const response = await fetch(`${API_BASE}/api/runs/${runId}`);
+  const response = await fetch(`${API_ROOT}/runs/${encodeURIComponent(runId)}`);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch run detail: ${response.statusText}`);
@@ -360,7 +360,7 @@ export async function getRunDetail(runId: string): Promise<RunSummary> {
 }
 
 export async function downloadRunData(runId: string, format: 'json' | 'csv'): Promise<Blob> {
-  const response = await fetch(`${API_BASE}/api/runs/${runId}/export?format=${format}`);
+  const response = await fetch(`${API_ROOT}/runs/${encodeURIComponent(runId)}/export?format=${format}`);
 
   if (!response.ok) {
     throw new Error(`Failed to download run data: ${response.statusText}`);

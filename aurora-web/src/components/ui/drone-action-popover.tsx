@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
-interface DroneAction {
+export interface DroneAction {
   step: number;
   action: 'suppress' | 'scout' | 'move' | 'idle';
   reason: string;
@@ -143,49 +143,4 @@ export function DroneActionPopover({
       <div className="w-full h-full" />
     </div>
   );
-}
-
-/**
- * Generate sample drone actions for display (when there's no real data)
- */
-export function generateMockDroneActions(droneId: string): DroneAction[] {
-  const actions: DroneAction[] = [
-    {
-      step: 145,
-      action: 'suppress',
-      reason: 'Fire intensity 0.85 at bearing 45°. Wind shift predicted NE in 3 steps.',
-      confidence: 0.92,
-      location: { x: 128, y: 95 },
-    },
-    {
-      step: 140,
-      action: 'move',
-      reason: 'Repositioning to flank approaching fire. Battery at 42%.',
-      confidence: 0.78,
-      location: { x: 110, y: 88 },
-    },
-    {
-      step: 135,
-      action: 'scout',
-      reason: 'Gathering weather data and fire perimeter info for LLM strategy update.',
-      confidence: 0.65,
-      location: { x: 95, y: 82 },
-    },
-    {
-      step: 130,
-      action: 'suppress',
-      reason: 'Critical fire growth detected. 15 hectares burned in last 2 steps.',
-      confidence: 0.88,
-      location: { x: 120, y: 100 },
-    },
-    {
-      step: 125,
-      action: 'idle',
-      reason: 'Waiting for LLM strategic guidance. No critical threats in vicinity.',
-      confidence: 0.71,
-      location: { x: 115, y: 98 },
-    },
-  ];
-
-  return actions;
 }
