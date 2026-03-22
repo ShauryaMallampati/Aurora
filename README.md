@@ -78,7 +78,7 @@ Create these locally (they are gitignored).
 ```bash
 # Hugging Face (needed for gated LLMs)
 # Get one at: https://huggingface.co/settings/tokens
-export HF_TOKEN=hf_your_token_here
+export HF_TOKEN=<your_huggingface_token>
 ```
 
 ### Web dashboard (`/aurora-web/.env.local`)
@@ -86,12 +86,12 @@ export HF_TOKEN=hf_your_token_here
 ```bash
 # Google Maps (map tiles)
 # Get one at: https://console.cloud.google.com/apis/credentials
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_key
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<your_google_maps_browser_key>
 
 # Supabase (optional run history)
 # Get these at: https://supabase.com/dashboard
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+NEXT_PUBLIC_SUPABASE_URL=<your_supabase_url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your_supabase_anon_key>
 ```
 
 **Heads up:** `.env` files are gitignored so keys stay local.

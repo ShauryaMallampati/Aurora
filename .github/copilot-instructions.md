@@ -189,7 +189,7 @@ The weather integrator caches responses. If you hit rate limits:
 ### 4. LLM Model Gating
 For meta-llama models, you need HuggingFace token:
 ```bash
-export HF_TOKEN=hf_...
+export HF_TOKEN=<your_huggingface_token>
 python train_hybrid.py --llm_model meta-llama/Llama-2-7b-chat-hf
 ```
 Qwen models are ungated (recommended for ISEF).
@@ -316,7 +316,7 @@ Demo files stored in `public/demos/` (JSON logs from `logs/` directory)
 
 ```bash
 # HuggingFace token (for gated models)
-export HF_TOKEN=hf_...
+export HF_TOKEN=<your_huggingface_token>
 
 # Disable tokenizer parallelism (avoids fork warnings)
 export TOKENIZERS_PARALLELISM=false
