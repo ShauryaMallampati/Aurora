@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**AURORA** (Autonomous Unified Response Orchestration for Real-world Actions) is an ISEF 2025 competition project that trains autonomous drone agents to contain wildfires using a hybrid PPO + LLM reinforcement learning approach with **REAL historical wildfire data**.
+**AURORA** (Autonomous Unified Response Orchestration for Real-world Actions) trains autonomous drone agents to contain wildfires using a hybrid PPO + LLM reinforcement learning approach with historical wildfire data.
 
 ### Core Architecture: Hybrid PPO-LLM
 
@@ -91,7 +91,7 @@ python preflight.py
 
 ## Training Workflow
 
-### Quick Start (Recommended for ISEF)
+### Quick Start
 ```bash
 # Full phased training (~18-20 hours on GPU)
 ./master.sh train --phase full
@@ -192,7 +192,7 @@ For meta-llama models, you need HuggingFace token:
 export HF_TOKEN=<your_huggingface_token>
 python train_hybrid.py --llm_model meta-llama/Llama-2-7b-chat-hf
 ```
-Qwen models are ungated (recommended for ISEF).
+Qwen models are ungated.
 
 ### 5. Checkpoint Step Mismatch
 When resuming, ensure `--timesteps` accounts for already-trained steps:
@@ -376,7 +376,7 @@ print(strategy)  # {'priority_zones': [...], 'drone_assignments': {...}}
 
 ## Project Status & TODOs
 
-### ✅ Completed
+### Completed
 - Real data integration (116K fires, NOAA weather)
 - Hybrid PPO+LLM training infrastructure
 - Phased curriculum training (A→B→C)
@@ -395,14 +395,13 @@ print(strategy)  # {'priority_zones': [...], 'drone_assignments': {...}}
 2. **Evaluation Analysis**: Generate comparison metrics (PPO-only vs Hybrid)
 3. **Ablation Studies**: Test different LLM frequencies, model sizes
 4. **Visualization Dashboard**: Enhance web demo with training curves
-5. **ISEF Presentation Materials**: Generate charts, case studies, performance tables
+5. **Presentation Materials**: Generate charts, case studies, performance tables
 6. **Documentation**: Add architecture diagrams, API docs for key classes
 
 ---
 
 ## Contact & Resources
 
-- **ISEF Competition**: 2025
 - **Author**: Shaurya Mallampati
 - **Data Sources**:
   - InterAgency Fire Perimeter History: 116,337 fires (1308-2024)

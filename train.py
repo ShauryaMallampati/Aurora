@@ -132,7 +132,7 @@ class HybridRealFireEnv(gym.Env):
                     assert self.fire_sim.fuel_density.shape == expected_shape, f"Fuel density shape mismatch: {self.fire_sim.fuel_density.shape} != {expected_shape}"
                     break
                 except Exception as e:
-                    print(f"⚠️  Error loading real scenario (attempt {attempt + 1}/5): {e}")
+                    print(f"Warning: error loading real scenario (attempt {attempt + 1}/5): {e}")
                     if attempt == 4:
                         raise RuntimeError("Failed to load a real scenario after 5 attempts") from e
                     print("   Retrying with another random real scenario...")
@@ -330,7 +330,7 @@ class TrainingCallback(BaseCallback):
     def _on_training_start(self) -> None:
         self.start_time = datetime.now()
         print(f"\n🚀 Hybrid PPO + Qwen Training started at {self.start_time.strftime('%H:%M:%S')}")
-        print(f"💾 Checkpoints will be saved every {self.save_freq} steps to: {self.save_path}")
+        print(f"Checkpoints will be saved every {self.save_freq} steps to: {self.save_path}")
         print("="*80)
         
     def _on_step(self) -> bool:
@@ -347,7 +347,7 @@ class TrainingCallback(BaseCallback):
             
             # Console tick (same line)
             print(f"\r� STEP {self.n_calls:,}/{self.total_timesteps:,} ({progress:.1f}%) | "
-                  f"⏱️ {steps_per_sec:.0f} steps/sec | ETA: {eta}", end='', flush=True)
+                  f"{steps_per_sec:.0f} steps/sec | ETA: {eta}", end='', flush=True)
             
             # Detailed log every 1000 steps
             if self.n_calls % 1000 == 0:
@@ -355,13 +355,13 @@ class TrainingCallback(BaseCallback):
                 if len(self.episode_rewards) > 0:
                     mean_reward = np.mean(self.episode_rewards[-10:])
                     mean_length = np.mean(self.episode_lengths[-10:])
-                    print(f"   🎯 Mean reward (last 10 ep): {mean_reward:.2f}")
-                    print(f"   📏 Mean episode length: {mean_length:.1f}")
+                    print(f"   Mean reward (last 10 ep): {mean_reward:.2f}")
+                    print(f"   Mean episode length: {mean_length:.1f}")
                 
                 # LLM stats
                 if self.hybrid_agent:
                     stats = self.hybrid_agent.get_statistics()
-                    print(f"   🧠 LLM calls: {stats['llm_calls']}, "
+                    print(f"   LLM calls: {stats['llm_calls']}, "
                           f"Tokens: {stats['llm_tokens_used']}, "
                           f"Errors: {stats['llm_errors']}")
                 print("-"*80)
@@ -371,7 +371,7 @@ class TrainingCallback(BaseCallback):
             self.last_save_step = self.n_calls
             checkpoint_path = self.save_path / f"checkpoint_step_{self.n_calls}"
             self.model.save(str(checkpoint_path))
-            print(f"\n💾 Checkpoint saved at step {self.n_calls:,} -> {checkpoint_path}")
+            print(f"\nCheckpoint saved at step {self.n_calls:,} -> {checkpoint_path}")
         
         return True
     
@@ -405,7 +405,7 @@ def make_env(rank: int, llm_model: str, llm_freq: int, hf_token: str, llm_backen
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Train Hybrid PPO + Llama-2 on real fire data - ISEF 2025')
+    parser = argparse.ArgumentParser(description='Train hybrid PPO with optional LLM guidance on real fire data')
     
     # Phase config
     parser.add_argument('--phase', type=str, default='full', 
@@ -422,7 +422,7 @@ def main():
     
     # LLM settings
     parser.add_argument('--llm_model', type=str, default='Qwen/Qwen2.5-1.5B-Instruct',
-                       help='HuggingFace LLM model ID (Qwen recommended for ISEF)')
+                       help='HuggingFace LLM model ID')
     parser.add_argument('--llm_freq', type=int, default=500,
                        help='Steps between LLM guidance (500 recommended for speed, lower for more guidance)')
     parser.add_argument('--hf_token', type=str, default=None,
@@ -486,13 +486,13 @@ def main():
     # Get HuggingFace token
     hf_token = args.hf_token or os.getenv("HF_TOKEN")
     if not hf_token:
-        print("⚠️  WARNING: No HuggingFace token provided!")
+        print("Warning: no HuggingFace token provided.")
         print("   Set HF_TOKEN environment variable or use --hf_token argument")
         print("   Without token, will use heuristic fallback instead of Qwen")
         print()
     
     print("\n" + "="*80)
-    print("🔥 AURORA ISEF 2025 - HYBRID PPO + QWEN TRAINING")
+    print("AURORA HYBRID PPO TRAINING")
     print("="*80)
     print(f"Phase: {phase_name}")
     print(f"Total timesteps: {args.timesteps:,}")
@@ -502,12 +502,12 @@ def main():
     print(f"\nEnvironments: {args.n_envs} parallel")
     print(f"LLM model: {args.llm_model}")
     print(f"LLM guidance frequency: every {args.llm_freq} steps")
-    print(f"HF token: {'✅ Provided' if hf_token else '❌ Missing (will use heuristic)'}")
+    print(f"HF token: {'provided' if hf_token else 'missing (will use heuristic)'}")
     print(f"LLM backend: {args.llm_backend}")
     print(f"\nCheckpointing:")
     print(f"  Save frequency: every {args.save_freq // (2048 * args.n_envs)} updates ({args.save_freq:,} steps)")
     print(f"  Eval frequency: every {args.eval_freq // (2048 * args.n_envs)} updates ({args.eval_freq:,} steps)")
-    print("\n📊 Real Fire Data: 116,337 fires from InterAgency Fire Perimeter History")
+    print("\nReal fire data: 116,337 fires from InterAgency Fire Perimeter History")
     print("="*80 + "\n")
     
     # Set up parallel envs
@@ -521,14 +521,14 @@ def main():
     worker_backend = args.llm_backend
     if args.n_envs > 1 and args.llm_backend == 'transformers':
         # Use a transformers/heuristic mix to avoid loading heavy models per worker
-        print(f"⚡ SPEED OPTIMIZATION: Using transformers/heuristic mix for {args.n_envs} workers")
+        print(f"Using transformers/heuristic mix for {args.n_envs} workers")
         env = SubprocVecEnv([make_env(i, args.llm_model, args.llm_freq, hf_token, worker_backend) 
                             for i in range(args.n_envs)])
     else:
         print(f"NOTE: Using {args.llm_backend} backend with single environment")
         env = DummyVecEnv([make_env(0, args.llm_model, args.llm_freq, hf_token, args.llm_backend)])
     
-    print("✅ Environments created\n")
+    print("Environments created\n")
     
     # Check for existing checkpoints
     checkpoint_dir = _Path("./results/checkpoints/")
@@ -555,7 +555,7 @@ def main():
             # checkpoint_step_204800.zip -> 204800
             step_str = latest_checkpoint.stem.split("_")[-1]
             resume_step = int(step_str)
-            print(f"🔄 Found checkpoint at step {resume_step:,}: {latest_checkpoint}")
+            print(f"Found checkpoint at step {resume_step:,}: {latest_checkpoint}")
             
             # Auto-resume if --resume is set, else ask
             if args.resume:
@@ -569,9 +569,9 @@ def main():
                 resume_step = 0
                 print("   Starting fresh training from step 0")
             else:
-                print(f"   ✅ Resuming from step {resume_step:,}")
+                print(f"   Resuming from step {resume_step:,}")
         except (ValueError, IndexError):
-            print(f"⚠️  Could not parse checkpoint name: {latest_checkpoint}")
+            print(f"Warning: could not parse checkpoint name: {latest_checkpoint}")
             latest_checkpoint = None
     
     # Set up PPO model
@@ -580,7 +580,7 @@ def main():
         model = PPO.load(str(latest_checkpoint), env=env)
         # Adjust timesteps for resumed runs
         remaining_timesteps = max(0, args.timesteps - resume_step)
-        print(f"✅ Model loaded - will train for {remaining_timesteps:,} more steps")
+        print(f"Model loaded - will train for {remaining_timesteps:,} more steps")
         print(f"   (Total target: {args.timesteps:,}, Already trained: {resume_step:,})\n")
         args.timesteps = remaining_timesteps
     else:
@@ -599,7 +599,7 @@ def main():
             policy_kwargs=dict(net_arch=[256, 256, 128]),  # larger net for hybrid
             tensorboard_log=None
         )
-        print("✅ Model initialized\n")
+        print("Model initialized\n")
     
     # Set up training callback
     callback = TrainingCallback(
@@ -627,7 +627,7 @@ def main():
         training_time = (datetime.now() - start_time).total_seconds()
         
         print("\n" + "="*80)
-        print("✅ TRAINING COMPLETE")
+        print("Training complete")
         print("="*80)
         print(f"Training time: {training_time/60:.1f} minutes")
         print(f"Timesteps: {args.timesteps:,}")
@@ -651,11 +651,11 @@ def main():
             if zip_path.exists():
                 shutil.unpack_archive(str(zip_path), extract_dir=str(extract_dir))
                 zip_path.unlink()
-                print(f"💾 Hybrid model saved to {extract_dir.resolve()} (unzipped files)")
+                print(f"Hybrid model saved to {extract_dir.resolve()} (unzipped files)")
             else:
-                print(f"💾 Hybrid model saved at {save_base.resolve()}")
+                print(f"Hybrid model saved at {save_base.resolve()}")
         except Exception as e:
-            print(f"⚠️  Warning: failed to unpack model zip: {e}")
+            print(f"Warning: failed to unpack model zip: {e}")
 
         # Save training summary
         summary = {
@@ -675,10 +675,10 @@ def main():
         with open(str(summary_path), 'w') as f:
             json.dump(summary, f, indent=2)
 
-        print(f"📊 Training summary saved to {summary_path.resolve()}\n")
+        print(f"Training summary saved to {summary_path.resolve()}\n")
         
     except KeyboardInterrupt:
-        print("\n⚠️  Training interrupted by user")
+        print("\nTraining interrupted by user")
         print("Saving current model...")
         results_dir = _BASE_DIR / 'results'
         results_dir.mkdir(parents=True, exist_ok=True)
@@ -689,14 +689,14 @@ def main():
             if interrupted_zip.exists():
                 shutil.unpack_archive(str(interrupted_zip), extract_dir=str(interrupted_base))
                 interrupted_zip.unlink()
-                print(f"💾 Interrupted model saved to {interrupted_base.resolve()} (unzipped files)\n")
+                print(f"Interrupted model saved to {interrupted_base.resolve()} (unzipped files)\n")
             else:
-                print(f"💾 Interrupted model saved at {interrupted_base.resolve()}\n")
+                print(f"Interrupted model saved at {interrupted_base.resolve()}\n")
         except Exception as e:
-            print(f"⚠️  Warning: failed to unpack interrupted model zip: {e}\n")
+            print(f"Warning: failed to unpack interrupted model zip: {e}\n")
     
     except Exception as e:
-        print(f"\n❌ Training error: {e}")
+        print(f"\nTraining error: {e}")
         import traceback
         traceback.print_exc()
     

@@ -3,13 +3,14 @@
 # Master control: setup, train, validate, run.
 
 usage() {
-    echo "Usage: $0 {setup|train|validate|run} [options]"
+    echo "Usage: $0 {setup|train|validate|run|web} [options]"
     echo ""
     echo "Commands:"
     echo "  setup          - Install dependencies and validate environment"
     echo "  train          - Train AURORA model with phased training"
     echo "  validate       - Run validation on trained model"
     echo "  run            - Run simulation with trained model"
+    echo "  web            - Run the Next.js web dashboard"
     echo ""
     echo "Train Options:"
     echo "  --phase <name> - Training phase: phase_a, phase_b, phase_c, phase_d, full, quick"
@@ -104,13 +105,13 @@ EOF
         ;;
     train)
         echo "============================================================"
-        echo "🔥 AURORA ISEF 2025 - Hybrid PPO + Qwen Training"
+        echo "AURORA Hybrid PPO Training"
         echo "============================================================"
         echo ""
         
         # Ensure HuggingFace token is set (do NOT hardcode API keys)
         if [ -z "$HF_TOKEN" ]; then
-            echo "⚠️  HF_TOKEN environment variable not set. If you need to use gated models, export HF_TOKEN before running this script."
+            echo "HF_TOKEN environment variable not set. If you need to use gated models, export HF_TOKEN before running this script."
         else
             echo "Using HF_TOKEN from environment"
         fi
@@ -128,18 +129,18 @@ EOF
         
         if [ $? -eq 0 ]; then
             echo ""
-            echo "✅ Training completed successfully!"
-            echo "📂 Model saved to: results/aurora_hybrid_ppo_llm_model/"
-            echo "📊 Training log: logs/hybrid_training.log"
+            echo "Training completed successfully."
+            echo "Model saved to: results/aurora_hybrid_ppo_llm_model/"
+            echo "Training log: logs/hybrid_training.log"
         else
             echo ""
-            echo "❌ Training failed. Check logs/hybrid_training.log for details."
+            echo "Training failed. Check logs/hybrid_training.log for details."
             exit 1
         fi
         ;;
     validate)
         echo "============================================================"
-        echo "🔍 AURORA Model Validation"
+        echo "AURORA Model Validation"
         echo "============================================================"
         echo "Running validation on trained model..."
         
@@ -148,15 +149,21 @@ EOF
         elif [ -f "./preflight.py" ]; then
             python preflight.py "$@"
         else
-            echo "❌ No validation script found."
+            echo "No validation script found."
             exit 1
         fi
         ;;
     run)
         echo "============================================================"
-        echo "🚁 Running AURORA Simulation"
+        echo "Running AURORA Simulation"
         echo "============================================================"
         python main_enhanced.py "$@"
+        ;;
+    web)
+        echo "============================================================"
+        echo "Running AURORA Web Dashboard"
+        echo "============================================================"
+        npm run dev --prefix aurora-web
         ;;
     *)
         usage

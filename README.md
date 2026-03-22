@@ -1,267 +1,141 @@
-# AURORA - Autonomous Unified Response Orchestration for Real-world Actions
+# AURORA
 
-## Wildfire containment with LLM-guided PPO
+## Wildfire containment with hybrid PPO and LLM guidance
 
-AURORA trains autonomous drone swarms to contain wildfires using a hybrid stack: **Large Language Models (LLMs)** for high-level guidance + **PPO** for control. The whole point: get smarter strategies on hard fires without babysitting the agent.
+AURORA is a research codebase for training autonomous drone swarms to contain wildfires. The main system combines PPO for low-level control with optional LLM-based strategic guidance.
 
-**Key result:** +21% improvement over PPO baseline, with gains concentrated on hard scenarios (not just easy wins).
+The repository includes:
 
----
+- training entrypoints for PPO-only and hybrid runs
+- evaluation helpers and callbacks
+- real-data ingestion for fire perimeters, weather, and terrain features
+- an ablation-study scaffold under `results/ablation_study/`
 
-## What this is (quick vibe check)
+## Current status
 
-- **Faster response:** 2-5 minutes vs 15-30 minutes in traditional workflows
-- **Strategic AI:** LLM guidance informed by 116K historical fires
-- **Multi-drone suppression:** coordinated perimeter attack, not single-drone whack-a-mole
-- **Real data:** NOAA weather + USGS terrain + InterAgency fire perimeters
+The implementation pipeline is present and the reviewer-facing package has been scaffolded. The current empirical status is documented in:
 
-### Key results
+- `results/ablation_study/REPO_AUDIT.md`
+- `results/ablation_study/FINAL_AUDIT.md`
+- `results/ablation_study/README.md`
 
-| Metric | PPO Baseline | AURORA Hybrid | Improvement |
-|--------|--------------|---------------|-------------|
-| Final Return | 34.57 | 41.84 | **+21.0%** |
-| Hard Scenarios | 36.26 | 58.85 | **+62.3%** |
-| Easy Scenarios | 42.33 | 42.33 | 0.0% (already optimal) |
-| Episodes Trained | 20,028 | 17,453 | 53,055 total |
+Use those files as the source of truth for which experiment families are complete and which are still pending.
 
-**Takeaway:** The gains show up where strategy actually matters.
+## Quick start
 
----
+### Prerequisites
 
-## Quick start (about 5 minutes)
-
-### Prereqs
 - Python 3.9+
-- GPU recommended (CUDA 11.8+)
-- 16GB RAM minimum
+- GPU recommended for larger training runs
+- 16 GB RAM minimum
 
 ### Install
 
 ```bash
-# Clone
 git clone https://github.com/yourusername/AURORA.git
 cd AURORA
 
-# Virtual env
 python -m venv venv
 source venv/bin/activate
 
-# Deps
 pip install -r requirements.txt
-
-# Sanity check
 python preflight.py
 ```
 
-### Run a quick sim
+### Run a short training job
 
 ```bash
-# Quick training run (10-15 min)
 python train_hybrid.py --phase quick
+```
 
-# Sim with the trained model
+### Run the simulator
+
+```bash
 python main_enhanced.py
-
-# Web dashboard
-cd aurora-web && npm run dev
-# Open http://localhost:3000
 ```
 
----
-
-## API keys (only if you want the full stack)
-
-Create these locally (they are gitignored).
-
-### Python backend (`/.env` or export in terminal)
-
-```bash
-# Hugging Face (needed for gated LLMs)
-# Get one at: https://huggingface.co/settings/tokens
-export HF_TOKEN=<your_huggingface_token>
-```
-
-### Web dashboard (`/aurora-web/.env.local`)
-
-```bash
-# Google Maps (map tiles)
-# Get one at: https://console.cloud.google.com/apis/credentials
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<your_google_maps_browser_key>
-
-# Supabase (optional run history)
-# Get these at: https://supabase.com/dashboard
-NEXT_PUBLIC_SUPABASE_URL=<your_supabase_url>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your_supabase_anon_key>
-```
-
-**Heads up:** `.env` files are gitignored so keys stay local.
-
----
-
-## Docs
-
-- `docs/ABSTRACT.md` - 250-word research abstract
-- `docs/ANALYSIS.md` - full analysis + results
-- `docs/README.md` - doc index
-
----
-
-## Project layout (actual repo)
-
-```
-AURORA/
-+-- README.md
-+-- LICENSE
-+-- requirements.txt
-|
-+-- train_hybrid.py              # Main training script
-+-- train.py                     # PPO-only training
-+-- main_enhanced.py             # Run sims + logging
-+-- simulate.py                  # Lightweight sim entry
-+-- evaluate.py                  # Evaluation configs + helpers
-+-- validate.py                  # Data validation
-+-- preflight.py                 # Setup checks
-+-- callbacks.py                 # Training callbacks
-|
-+-- agents/
-|   +-- drone_agent.py           # Individual drone logic
-|   +-- hybrid_ppo_llm_agent.py  # PPO + LLM agent
-|
-+-- data/
-|   +-- real_data_integration_complete.py
-|
-+-- configs/
-|   +-- training_phases.yaml
-|
-+-- results/                     # Outputs (some tracked via LFS)
-|
-+-- docs/
-|   +-- ABSTRACT.md
-|   +-- ANALYSIS.md
-|   +-- README.md
-|
-+-- utils/
-|   +-- visualizer.py
-|
-+-- aurora-web/                  # Web dashboard
-```
-
----
-
-## How it works
-
-**1) LLM (Qwen 2.5)**
-- Reads the fire state every ~50 steps
-- Suggests priority zones + coordination targets
-
-**2) PPO policy**
-- Executes actions (movement + suppression)
-- Learns from rewards over episodes
-
-**Net effect:** strategy + control beats pure PPO by ~21%.
-
----
-
-## Training
-
-```bash
-# Quick
-python train_hybrid.py --phase quick
-
-# Full (GPU recommended)
-python train_hybrid.py --phase full
-
-# Phased
-python train_hybrid.py --phase phase_a
-python train_hybrid.py --phase phase_b
-python train_hybrid.py --phase phase_c
-```
-
----
-
-## Evaluation
-
-```bash
-# Run eval helpers (writes/reads results/metrics.csv)
-python evaluate.py
-```
-
-**Artifacts:**
-- `results/aurora_complete_evaluation.pdf`
-- `results/aurora_metrics.csv`
-- Dashboard at `http://localhost:3000`
-
----
-
-## Web dashboard
+### Run the web dashboard
 
 ```bash
 cd aurora-web
 npm install
 npm run dev
-# Open http://localhost:3000
 ```
 
-Dashboard includes:
-- Live metrics
-- PPO vs Hybrid comparison
-- Fire scenario viewer
-- Training charts
+## API keys
 
----
+Local environment files are ignored by git. Keep credentials out of tracked files.
 
-## Real data integration (no fake wins)
+### Python backend
 
-| Source | Size | Usage |
-|--------|------|-------|
-| InterAgency Fire Perimeter | 116,337 fires | Training scenarios |
-| NOAA Weather API | Historical records | Wind, temp, humidity |
-| USGS 3DEP Elevation | Full resolution | Terrain effects |
+```bash
+export HF_TOKEN=<your_huggingface_token>
+```
 
-**Strict mode:** if real data is missing, the system fails fast.
+### Web dashboard
 
----
+Create `aurora-web/.env.local` with:
 
-## Pretrained models
+```bash
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<your_google_maps_browser_key>
+NEXT_PUBLIC_SUPABASE_URL=<your_supabase_url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your_supabase_anon_key>
+```
 
-Stored under `results/`:
-- `ppo_baseline_no_llm/`
-- `ppo_llm_qwen2_5_3b_freq50/`
-- `ppo_llm_qwen2_5_7b_freq50/`
+A tracked example file is available at `aurora-web/.env.example`.
 
-Loaded automatically in `main_enhanced.py`.
+## Repository layout
 
----
+```text
+AURORA/
+├── train.py
+├── train_hybrid.py
+├── evaluate.py
+├── callbacks.py
+├── agents/
+├── configs/
+├── data/
+├── docs/
+├── results/
+└── aurora-web/
+```
+
+## Training and evaluation
+
+Typical entrypoints:
+
+- `python train.py` for PPO-only training
+- `python train_hybrid.py` for hybrid PPO + strategist training
+- `python evaluate.py` for evaluation helpers
+- `python run_ablation_suite.py --mode audit` for the ablation-study audit flow
+
+Phase definitions live in `configs/training_phases.yaml`. The current ablation-study settings live in `configs/ablation_study.yaml`.
+
+## Real-data integration
+
+The codebase can integrate:
+
+- InterAgency Fire Perimeter data
+- NOAA weather data
+- terrain-derived features used by the simulator
+
+Data loading and strict-mode behavior are summarized in `results/ablation_study/REPO_AUDIT.md`.
+
+## Documentation
+
+- `docs/ABSTRACT.md`
+- `docs/ANALYSIS.md`
+- `docs/README.md`
+- `results/ablation_study/README.md`
 
 ## Requirements
 
-**Core deps**
-- Python 3.9+
-- PyTorch 2.0+
-- Stable-Baselines3 2.0+
-- Gymnasium 0.27+
-- Transformers 4.30+
-- GeoPandas 0.12+
-
-**Hardware**
-- NVIDIA GPU recommended (CUDA 11.8+)
-- 16GB RAM minimum
-- ~10GB disk for models + data
-
-See `requirements.txt` for exact versions.
-
----
+Core dependencies include PyTorch, Stable-Baselines3, Gymnasium, Transformers, and GeoPandas. See `requirements.txt` for the exact versions used by the current pipeline.
 
 ## Contributing
 
-Issues + PRs welcome. If you add data sources or benchmarks, please document them in `docs/ANALYSIS.md`.
-
----
+Issues and pull requests are welcome. If you add a data source, benchmark, or new experiment variant, update the relevant documentation under `docs/` or `results/ablation_study/`.
 
 ## License
 
-MIT - see `LICENSE`.
-
----
-
-**ISEF 2025**  |  **Version 1.0**  |  **January 2025**
+MIT. See `LICENSE`.
