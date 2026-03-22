@@ -1,12 +1,20 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useSimulationStore } from "@/shared/store";
 import { normalizeScenarioId } from "@/shared/scenarios";
 import { ControlBar } from "./ControlBar";
-import { MapStage } from "./MapStage";
 import { RightPanel } from "./RightPanel";
 import { SplitViewComparison } from "./SplitViewComparison";
+
+const MapStage = dynamic(
+  () => import("./MapStage").then((module) => module.MapStage),
+  {
+    ssr: false,
+    loading: () => <div className="h-full w-full bg-slate-200" />,
+  },
+);
 
 interface SimulationPreset {
   scenarioId?: string;

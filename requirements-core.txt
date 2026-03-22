@@ -1,0 +1,28 @@
+# Core dependencies for AURORA training (minimal)
+numpy
+matplotlib
+scipy
+pandas
+tqdm
+
+# RL and training
+gymnasium
+stable-baselines3[extra]
+torch
+tensorboard
+
+# LLM and transformers
+transformers
+accelerate
+sentencepiece
+protobuf
+
+# API and utilities
+openai
+requests
+pathlib
+pyyaml
+
+# Optional visualization
+plotly
+seaborn

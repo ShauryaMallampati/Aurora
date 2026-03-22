@@ -218,15 +218,6 @@ def run_enhanced_simulation(
     }
     logger.log_config(config)
     
-    # Ensure terrain map exists
-    terrain_path = os.path.join(os.path.dirname(__file__), 'data', 'terrain_map.npy')
-    if not os.path.exists(terrain_path):
-        try:
-            from .data.generate_map import main as gen_map_main
-        except ImportError:
-            from data.generate_map import main as gen_map_main
-        gen_map_main()
-    
     # Start fire sim
     sim = FireSim(
         wind_direction=wind_direction,

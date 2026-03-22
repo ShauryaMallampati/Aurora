@@ -56,28 +56,30 @@ def check_data_files():
 
     data_dir = Path(__file__).parent / 'data'
 
-    checks = [
-        (
-            'InterAgencyFirePerimeterHistory_All_Years_View_5507083134356011387',
-            'Fire perimeter shapefile directory'
-        ),
-        ('weather_cache', 'Weather cache directory'),
-    ]
+    shapefile_dir = data_dir / 'InterAgencyFirePerimeterHistory_All_Years_View_5507083134356011387'
+    weather_cache_dir = data_dir / 'weather_cache'
+    fallback_loader = data_dir / 'fire_perimeter_loader.py'
 
     all_ok = True
 
-    for item, desc in checks:
-        path = data_dir / item
-        if path.exists():
-            print(f"✅ {desc}: {path.name}")
-        else:
-            print(f"❌ {desc}: NOT FOUND")
-            all_ok = False
+    if shapefile_dir.exists():
+        print(f"✅ Fire perimeter shapefile directory: {shapefile_dir.name}")
+    elif fallback_loader.exists():
+        print("⚠️  Fire perimeter shapefile directory: NOT FOUND")
+        print("✅ Curated fallback fire catalog: fire_perimeter_loader.py")
+    else:
+        print("❌ Fire perimeter shapefile directory: NOT FOUND")
+        all_ok = False
+
+    if weather_cache_dir.exists():
+        print(f"✅ Weather cache directory: {weather_cache_dir.name}")
+    else:
+        weather_cache_dir.mkdir(parents=True, exist_ok=True)
+        print(f"✅ Weather cache directory: CREATED ({weather_cache_dir.name})")
 
     # Check key shapefile component
-    shp_dir = data_dir / 'InterAgencyFirePerimeterHistory_All_Years_View_5507083134356011387'
-    if shp_dir.exists():
-        shp_file = shp_dir / 'InteragencyFirePerimeterHistory.shp'
+    if shapefile_dir.exists():
+        shp_file = shapefile_dir / 'InteragencyFirePerimeterHistory.shp'
         if shp_file.exists():
             print(f"✅ Shapefile: {shp_file.name}")
         else:
@@ -87,7 +89,7 @@ def check_data_files():
     if all_ok:
         print("\n✅ All data files present\n")
     else:
-        print("\n⚠️  Some data files missing\n")
+        print("\n⚠️  Some data files missing, but local fallback mode is available where noted.\n")
 
     return all_ok
 

@@ -33,6 +33,9 @@ MANIFEST
 # env/  <-- Commented out because we have a folder named 'env' for source code
 venv/
 ENV/
+!env/
+!env/__init__.py
+!env/*.py
 env.bak/
 venv.bak/
 

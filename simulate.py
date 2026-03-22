@@ -111,6 +111,21 @@ def create_agents(agent_configs: List[Dict[str, Any]], fire_sim: FireSim) -> Lis
     return agents
 
 
+def ensure_terrain_map(terrain_path: str, grid_size: int = 50) -> None:
+    """Create a deterministic terrain map if the cached file is missing.
+
+    The previous code attempted to import a non-existent generate_map helper.
+    We now generate the map directly from the in-repo FireSim terrain model.
+    """
+    if os.path.exists(terrain_path):
+        return
+
+    os.makedirs(os.path.dirname(terrain_path), exist_ok=True)
+    terrain_map = FireSim(grid_size=grid_size).terrain.astype(np.uint8)
+    np.save(terrain_path, terrain_map)
+    print(f"Generated missing terrain map at {terrain_path}")
+
+
 def heuristic_action(drone: DroneAgent, sim: FireSim) -> int:
     """Enhanced heuristic action selection."""
     # If we can suppress and a neighbor is burning, do it
@@ -220,12 +235,7 @@ def run_enhanced_simulation(
     
     # Ensure terrain map exists
     terrain_path = os.path.join(os.path.dirname(__file__), 'data', 'terrain_map.npy')
-    if not os.path.exists(terrain_path):
-        try:
-            from .data.generate_map import main as gen_map_main
-        except ImportError:
-            from data.generate_map import main as gen_map_main
-        gen_map_main()
+    ensure_terrain_map(terrain_path)
     
     # Start fire sim
     sim = FireSim(
