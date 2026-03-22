@@ -64,10 +64,10 @@ class HybridRealFireEnv(gym.Env):
                 llm_backend=llm_backend
             )
         
-        # 9 channels: 6 world + 3 strategy
+        # 9 channels in [0, 1]: 6 world + 3 strategy
         # [fire, terrain, elev, fuel, batt, water, weight, x, y]
         self.observation_space = spaces.Box(
-            low=0, high=1, shape=(3, 3, 9), dtype=np.float32
+            low=0.0, high=1.0, shape=(3, 3, 9), dtype=np.float32
         )
         
         # Action space: 8 actions
@@ -86,55 +86,51 @@ class HybridRealFireEnv(gym.Env):
         
         # Pull a new real-fire scenario
         if self.integrator:
-            try:
-                self.current_scenario = self.integrator.create_training_scenario(
-                    min_year=2010,
-                    min_acres=100,
-                    max_acres=50000
-                )
-                
-                # Start fire sim with real data
-                initial_fire = self.current_scenario['initial_fire_grid'].astype(np.uint8)
-                
-                self.fire_sim = FireSim(
-                    grid_size=self.grid_size
-                )
-                
-                # Reset using the real fire grid
-                self.fire_sim.reset(initial_fire_grid=initial_fire)
-                
-                # Set NOAA weather
-                weather = self.current_scenario['weather']
-                wind_dirs = {'N': (0, -1), 'NE': (1, -1), 'E': (1, 0), 'SE': (1, 1), 
-                           'S': (0, 1), 'SW': (-1, 1), 'W': (-1, 0), 'NW': (-1, -1)}
-                wind_dir = wind_dirs.get(weather['wind_direction'], (0, 0))
-                wind_speed = weather['wind_speed_mph'] / 25.0  # normalize
-                
-                self.fire_sim.set_wind(wind_dir, wind_speed)
-                self.fire_sim.set_weather(
-                    humidity=weather['humidity'] / 100.0,
-                    temperature=weather['temperature_c']
-                )
-                
-                # Apply real terrain
-                terrain = self.current_scenario['terrain']
-                self.fire_sim.elevation = (terrain['elevation'] / 3000.0).astype(np.float32)
-                self.fire_sim.fuel_density = (0.7 + terrain['slope'] * 0.3).astype(np.float32)
-                
-                # Make sure rasters align
-                expected_shape = (self.grid_size, self.grid_size)
-                assert self.fire_sim.fire_state.shape == expected_shape, f"Fire grid shape mismatch: {self.fire_sim.fire_state.shape} != {expected_shape}"
-                assert self.fire_sim.elevation.shape == expected_shape, f"Elevation shape mismatch: {self.fire_sim.elevation.shape} != {expected_shape}"
-                assert self.fire_sim.fuel_density.shape == expected_shape, f"Fuel density shape mismatch: {self.fire_sim.fuel_density.shape} != {expected_shape}"
-                
-            except Exception as e:
-                print(f"⚠️  Error loading real scenario: {e}")
-                # Strict mode: no synthetic fallback; retry another real scenario
-                if self.integrator:
+            for attempt in range(5):
+                try:
+                    self.current_scenario = self.integrator.create_training_scenario(
+                        min_year=2010,
+                        min_acres=100,
+                        max_acres=50000
+                    )
+
+                    # Start fire sim with real data
+                    initial_fire = self.current_scenario['initial_fire_grid'].astype(np.uint8)
+
+                    self.fire_sim = FireSim(grid_size=self.grid_size)
+
+                    # Reset using the real fire grid
+                    self.fire_sim.reset(initial_fire_grid=initial_fire)
+
+                    # Set NOAA weather
+                    weather = self.current_scenario['weather']
+                    wind_dirs = {'N': (0, -1), 'NE': (1, -1), 'E': (1, 0), 'SE': (1, 1),
+                               'S': (0, 1), 'SW': (-1, 1), 'W': (-1, 0), 'NW': (-1, -1)}
+                    wind_dir = wind_dirs.get(weather['wind_direction'], (0, 0))
+                    wind_speed = weather['wind_speed_mph'] / 25.0  # normalize
+
+                    self.fire_sim.set_wind(wind_dir, wind_speed)
+                    self.fire_sim.set_weather(
+                        humidity=weather['humidity'] / 100.0,
+                        temperature=weather['temperature_c']
+                    )
+
+                    # Apply real terrain
+                    terrain = self.current_scenario['terrain']
+                    self.fire_sim.elevation = (terrain['elevation'] / 3000.0).astype(np.float32)
+                    self.fire_sim.fuel_density = (0.7 + terrain['slope'] * 0.3).astype(np.float32)
+
+                    # Make sure rasters align
+                    expected_shape = (self.grid_size, self.grid_size)
+                    assert self.fire_sim.fire_state.shape == expected_shape, f"Fire grid shape mismatch: {self.fire_sim.fire_state.shape} != {expected_shape}"
+                    assert self.fire_sim.elevation.shape == expected_shape, f"Elevation shape mismatch: {self.fire_sim.elevation.shape} != {expected_shape}"
+                    assert self.fire_sim.fuel_density.shape == expected_shape, f"Fuel density shape mismatch: {self.fire_sim.fuel_density.shape} != {expected_shape}"
+                    break
+                except Exception as e:
+                    print(f"⚠️  Error loading real scenario (attempt {attempt + 1}/5): {e}")
+                    if attempt == 4:
+                        raise RuntimeError("Failed to load a real scenario after 5 attempts") from e
                     print("   Retrying with another random real scenario...")
-                    return self.reset(seed=seed)
-                else:
-                    raise RuntimeError("No integrator available and synthetic fallback disabled")
         else:
             raise RuntimeError("No real data integrator provided - cannot proceed without real data")
         
@@ -240,8 +236,8 @@ class HybridRealFireEnv(gym.Env):
                 obs[i+1, j+1, 1] = self.fire_sim.terrain[ny, nx] / 3.0
                 obs[i+1, j+1, 2] = self.fire_sim.elevation[ny, nx] / 100.0
                 obs[i+1, j+1, 3] = self.fire_sim.fuel_density[ny, nx]
-                obs[i+1, j+1, 4] = drone.battery
-                obs[i+1, j+1, 5] = drone.water
+                obs[i+1, j+1, 4] = np.clip(drone.battery / max(1e-6, drone.max_battery), 0.0, 1.0)
+                obs[i+1, j+1, 5] = np.clip(drone.water / max(1e-6, drone.max_water), 0.0, 1.0)
                 
                 # Strategy channels (6-8) from LLM guidance
                 if self.current_strategy:
@@ -263,9 +259,10 @@ class HybridRealFireEnv(gym.Env):
                             # Normalized direction vector
                             dx = (target[1] - x) / self.grid_size
                             dy = (target[0] - y) / self.grid_size
-                            obs[i+1, j+1, 7] = dx
-                            obs[i+1, j+1, 8] = dy
-        
+                            obs[i+1, j+1, 7] = np.clip((dx + 1.0) * 0.5, 0.0, 1.0)
+                            obs[i+1, j+1, 8] = np.clip((dy + 1.0) * 0.5, 0.0, 1.0)
+
+        np.clip(obs, 0.0, 1.0, out=obs)
         return obs
     
     def _calculate_reward(self) -> float:
@@ -704,4 +701,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from aurora_pipeline import cli_train
+
+    cli_train(default_variant="full_hybrid")

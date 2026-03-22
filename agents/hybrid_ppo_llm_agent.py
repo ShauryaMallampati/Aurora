@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple, Any
 import json
 from datetime import datetime
 import os
+from pathlib import Path
 
 try:
     from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
@@ -27,7 +28,12 @@ class HybridPPOLLMAgent:
                  temperature: float = 0.7,
                  hf_token: Optional[str] = None,
                  llm_backend: str = "transformers",
-                 device: str = "auto"):
+                 device: str = "auto",
+                 force_heuristic: bool = False,
+                 require_model_loaded: bool = False,
+                 guidance_log_path: Optional[str] = None,
+                 max_new_tokens: int = 256,
+                 do_sample: bool = False):
         """
         Args:
             llm_model: HuggingFace model ID
@@ -40,6 +46,11 @@ class HybridPPOLLMAgent:
         self.llm_guidance_frequency = llm_guidance_frequency
         self.temperature = temperature
         self.llm_backend = llm_backend.lower() if isinstance(llm_backend, str) else llm_backend
+        self.force_heuristic = bool(force_heuristic)
+        self.require_model_loaded = bool(require_model_loaded)
+        self.guidance_log_path = Path(guidance_log_path).expanduser() if guidance_log_path else None
+        self.max_new_tokens = int(max_new_tokens)
+        self.do_sample = bool(do_sample)
         
         # Set up LLM bits
         self.model = None
@@ -49,7 +60,9 @@ class HybridPPOLLMAgent:
         # Gemini backend removed; avoid heavy loads and use transformers/heuristics instead.
         hf_token = hf_token or os.getenv("HF_TOKEN")
 
-        if self.llm_backend == 'gemini':
+        if self.force_heuristic:
+            self.llm_backend = "heuristic"
+        elif self.llm_backend == 'gemini':
             # Gemini removed: switch to transformers.
             print("⚠️  Gemini backend requested but unsupported. Switching to 'transformers' backend.")
             self.llm_backend = 'transformers'
@@ -65,7 +78,12 @@ class HybridPPOLLMAgent:
                 try:
                     # Pick device
                     if device == "auto":
-                        device = "cuda" if torch.cuda.is_available() else "cpu"
+                        if torch.cuda.is_available():
+                            device = "cuda"
+                        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                            device = "mps"
+                        else:
+                            device = "cpu"
 
                     # Check if model is gated
                     is_gated_model = llm_model.startswith("meta-llama") or llm_model.startswith("meta/llama")
@@ -83,17 +101,19 @@ class HybridPPOLLMAgent:
                     # Pick dtype + device map
                     # Gated models prefer BF16/auto; fall back otherwise
                     if is_gated_model:
-                        torch_dtype = torch.bfloat16 if device == "cuda" else torch.float32
-                        device_map = "auto"
+                        torch_dtype = torch.bfloat16 if device == "cuda" else torch.float16 if device == "mps" else torch.float32
                     else:
-                        torch_dtype = torch.float16 if device == "cuda" else torch.float32
-                        device_map = device if device in ("cpu", "cuda") else "auto"
+                        torch_dtype = torch.float16 if device in ("cuda", "mps") else torch.float32
 
                     model_kwargs = {
                         "torch_dtype": torch_dtype,
-                        "device_map": device_map,
-                        "trust_remote_code": True
+                        "trust_remote_code": True,
+                        "low_cpu_mem_usage": True,
                     }
+                    if device == "cuda":
+                        model_kwargs["device_map"] = "auto"
+                    elif device == "cpu":
+                        model_kwargs["device_map"] = "cpu"
                     if is_gated_model and hf_token:
                         model_kwargs["token"] = hf_token
 
@@ -101,16 +121,23 @@ class HybridPPOLLMAgent:
                         llm_model,
                         **model_kwargs
                     )
+                    if device == "mps":
+                        self.model.to("mps")
 
                     # Build pipeline
+                    pipeline_device = device if device != "cpu" else -1
+                    generation_kwargs = {
+                        "max_new_tokens": self.max_new_tokens,
+                        "do_sample": self.do_sample,
+                    }
+                    if self.do_sample:
+                        generation_kwargs["temperature"] = self.temperature
                     self.pipe = pipeline(
                         "text-generation",
                         model=self.model,
                         tokenizer=self.tokenizer,
-                        max_new_tokens=512,
-                        temperature=temperature,
-                        do_sample=True,
-                        top_p=0.95
+                        device=pipeline_device,
+                        **generation_kwargs,
                     )
 
                     print(f"✅ LLM loaded on {device}: {llm_model}")
@@ -123,6 +150,10 @@ class HybridPPOLLMAgent:
         # If transformers missing, stick to heuristic
         if self.llm_backend == 'transformers' and not TRANSFORMERS_AVAILABLE:
             print("⚠️  Transformers library not available. Using heuristic fallback.")
+        if self.require_model_loaded and not self.force_heuristic and not self.pipe:
+            raise RuntimeError(
+                f"LLM variant requires a loaded model, but '{self.llm_model}' was not available."
+            )
         
         # Strategy state
         self.current_strategy = None
@@ -133,6 +164,43 @@ class HybridPPOLLMAgent:
         self.llm_calls = 0
         self.llm_tokens_used = 0
         self.llm_errors = 0
+        self.guidance_requests = 0
+        self.llm_query_attempts = 0
+        self.valid_structured_responses = 0
+        self.fallback_invocations = 0
+        self.heuristic_guidance_calls = 0
+        self.last_prompt = None
+        self.last_raw_response = None
+        self.last_parsed_guidance = None
+
+        if self.guidance_log_path is not None:
+            self.guidance_log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def reset_episode_state(self) -> None:
+        """Reset per-episode strategy state but keep aggregate counters."""
+        self.current_strategy = None
+        self.steps_since_guidance = 0
+
+    def _is_valid_guidance(self, payload: Any) -> bool:
+        if not isinstance(payload, dict):
+            return False
+        if not isinstance(payload.get("priority_zones"), list):
+            return False
+        if not isinstance(payload.get("drone_assignments"), dict):
+            return False
+        return True
+
+    def _append_guidance_event(self, payload: Dict[str, Any]) -> None:
+        if self.guidance_log_path is None:
+            return
+        event = dict(payload)
+        event.setdefault("timestamp", datetime.now().isoformat())
+        def _default(value: Any) -> Any:
+            if isinstance(value, np.generic):
+                return value.item()
+            return str(value)
+        with self.guidance_log_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(event, default=_default) + "\n")
         
     def get_strategic_guidance(self, 
                               fire_state: np.ndarray,
@@ -144,10 +212,18 @@ class HybridPPOLLMAgent:
         
         Returns dict with priority_zones, drone_assignments, resource_strategy.
         """
+        self.guidance_requests += 1
         
-        if not self.pipe:
+        if self.force_heuristic or not self.pipe:
             # No pipeline or heuristic mode
-            return self._fallback_strategy(fire_state, drone_positions, drone_states)
+            reason = 'heuristic_only' if self.force_heuristic else 'missing_pipeline'
+            return self._fallback_strategy(
+                fire_state,
+                drone_positions,
+                drone_states,
+                step=step,
+                reason=reason,
+            )
         
         try:
             # Analyze current situation
@@ -196,17 +272,25 @@ Focus on:
 
             # Format prompt
             prompt = f"<s>[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{user_prompt} [/INST]"
+            self.last_prompt = prompt
+            self.llm_query_attempts += 1
             
             # Generate response (transformers only)
             # Blocking call: wait for completion
             print(f"⏳ Waiting for Qwen guidance at step {step}...")
+            generation_kwargs = {
+                "max_new_tokens": self.max_new_tokens,
+                "num_return_sequences": 1,
+                "do_sample": self.do_sample,
+            }
+            if self.do_sample:
+                generation_kwargs["temperature"] = self.temperature
             outputs = self.pipe(
-                prompt, 
-                max_new_tokens=4000,
-                temperature=self.temperature,
-                num_return_sequences=1
+                prompt,
+                **generation_kwargs,
             )
             response_text = outputs[0].get('generated_text', '')
+            self.last_raw_response = response_text
             print(f"✅ Qwen responded")
             
             # Extract JSON (after [/INST])
@@ -224,7 +308,9 @@ Focus on:
             if json_match:
                 try:
                     json_str = json_match.group(0)
-                    guidance = json.loads(json_str)
+                    candidate = json.loads(json_str)
+                    if self._is_valid_guidance(candidate):
+                        guidance = candidate
                 except json.JSONDecodeError:
                     pass
             
@@ -235,17 +321,42 @@ Focus on:
                 if start_idx >= 0 and end_idx > start_idx:
                     try:
                         json_str = json_text[start_idx:end_idx+1]
-                        guidance = json.loads(json_str)
+                        candidate = json.loads(json_str)
+                        if self._is_valid_guidance(candidate):
+                            guidance = candidate
                     except json.JSONDecodeError:
                         pass
+
+            # If the model emitted multiple JSON objects, take the first valid one.
+            if not guidance:
+                decoder = json.JSONDecoder()
+                for index, char in enumerate(json_text):
+                    if char != "{":
+                        continue
+                    try:
+                        candidate, _ = decoder.raw_decode(json_text[index:])
+                    except json.JSONDecodeError:
+                        continue
+                    if self._is_valid_guidance(candidate):
+                        guidance = candidate
+                        break
             
             # If still invalid, fall back to heuristic
             if not guidance:
                 self.llm_errors += 1
-                return self._fallback_strategy(fire_state, drone_positions, drone_states)
+                return self._fallback_strategy(
+                    fire_state,
+                    drone_positions,
+                    drone_states,
+                    step=step,
+                    reason='invalid_json',
+                    prompt=prompt,
+                    raw_response=response_text,
+                )
             
             # Update stats
             self.llm_calls += 1
+            self.valid_structured_responses += 1
             # Rough token estimate
             prompt_tokens = len(prompt.split())
             response_tokens = len(json_text.split())
@@ -255,6 +366,19 @@ Focus on:
             guidance['timestamp'] = datetime.now().isoformat()
             guidance['step'] = step
             self.guidance_history.append(guidance)
+            self.last_parsed_guidance = guidance
+            self._append_guidance_event(
+                {
+                    'step': step,
+                    'source': 'llm',
+                    'prompt': prompt,
+                    'raw_response': response_text,
+                    'parsed_guidance': guidance,
+                    'valid_structured_parse': True,
+                    'fallback_invoked': False,
+                    'llm_query_attempted': True,
+                }
+            )
             
             strategy = guidance.get('resource_strategy', 'balanced')
             reasoning = guidance.get('reasoning', 'Strategic guidance provided')[:80]
@@ -265,14 +389,33 @@ Focus on:
         except Exception as e:
             # On error, fall back instead of crashing
             self.llm_errors += 1
-            return self._fallback_strategy(fire_state, drone_positions, drone_states)
+            return self._fallback_strategy(
+                fire_state,
+                drone_positions,
+                drone_states,
+                step=step,
+                reason=f'exception:{type(e).__name__}',
+                prompt=self.last_prompt,
+                raw_response=self.last_raw_response,
+            )
 
     # Gemini API is intentionally removed.
     # If you add API backends later, keep them in optional adapters
     # so keys never land in source.
     
-    def _fallback_strategy(self, fire_state, drone_positions, drone_states) -> Dict:
+    def _fallback_strategy(
+        self,
+        fire_state,
+        drone_positions,
+        drone_states,
+        step: Optional[int] = None,
+        reason: str = 'fallback',
+        prompt: Optional[str] = None,
+        raw_response: Optional[str] = None,
+    ) -> Dict:
         """Heuristic fallback when LLM is unavailable."""
+        self.fallback_invocations += 1
+        self.heuristic_guidance_calls += 1
         
         hotspots = self._find_fire_hotspots(fire_state)
         
@@ -288,7 +431,7 @@ Focus on:
                 nearest_idx = np.argmin(distances)
                 assignments[f"drone_{i}"] = nearest_idx
         
-        return {
+        guidance = {
             'priority_zones': priority_zones,
             'drone_assignments': assignments,
             'resource_strategy': 'balanced',
@@ -296,6 +439,21 @@ Focus on:
             'reasoning': 'Heuristic fallback: target largest fire clusters',
             'source': 'heuristic'
         }
+        self.last_parsed_guidance = guidance
+        self._append_guidance_event(
+            {
+                'step': step,
+                'source': 'heuristic',
+                'reason': reason,
+                'prompt': prompt,
+                'raw_response': raw_response,
+                'parsed_guidance': guidance,
+                'valid_structured_parse': False,
+                'fallback_invoked': True,
+                'llm_query_attempted': bool(prompt),
+            }
+        )
+        return guidance
     
     def _find_fire_hotspots(self, fire_state: np.ndarray, min_size: int = 5) -> List[Dict]:
         """Find connected fire clusters."""
@@ -360,6 +518,8 @@ Focus on:
     
     def should_request_guidance(self, step: int) -> bool:
         """Check if it's time for an LLM call."""
+        if step == 0 and not self.guidance_history and self.current_strategy is None:
+            return True
         self.steps_since_guidance += 1
         
         if self.steps_since_guidance >= self.llm_guidance_frequency:
@@ -373,8 +533,18 @@ Focus on:
             'llm_calls': self.llm_calls,
             'llm_tokens_used': self.llm_tokens_used,
             'llm_errors': self.llm_errors,
+            'guidance_requests': self.guidance_requests,
+            'llm_query_attempts': self.llm_query_attempts,
+            'valid_structured_responses': self.valid_structured_responses,
+            'fallback_invocations': self.fallback_invocations,
+            'heuristic_guidance_calls': self.heuristic_guidance_calls,
             'guidance_history_length': len(self.guidance_history),
-            'avg_tokens_per_call': self.llm_tokens_used / max(1, self.llm_calls)
+            'avg_tokens_per_call': self.llm_tokens_used / max(1, self.llm_calls),
+            'fallback_rate_percentage': (
+                (self.fallback_invocations / self.llm_query_attempts) * 100.0
+                if self.llm_query_attempts
+                else None
+            ),
         }
 
 

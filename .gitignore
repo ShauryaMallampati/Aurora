@@ -12,7 +12,6 @@ eggs/
 .eggs/
 # lib/  <-- Don't ignore all 'lib' folders, only the root one if it exists
 /lib/
-/env/
 lib64/
 parts/
 sdist/
@@ -99,6 +98,12 @@ data/**/*.json
 results/frame_*.png
 results/enhanced_frame_*.png
 results/enhanced_analysis_*.png
+results/ablation_study/**/*.png
+results/ablation_study/**/*.pdf
+results/ablation_study/**/*.csv
+!results/ablation_study/fallback_analysis/*.json
+!results/ablation_study/fallback_analysis/*.txt
+!results/ablation_study/**/*.md
 results/logs/*.json
 results/tensorboard_logs/
 results/phase3_logs/
