@@ -21,8 +21,15 @@
   "author": [
     {
       "@type": "Person",
+      "@id": "https://orcid.org/0009-0005-4079-9974",
       "givenName": "Shaurya",
-      "familyName": "Mallampati"
+      "familyName": "Mallampati",
+      "email": "shauryasai@gmail.com",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Marriotts Ridge High School",
+        "address": "Marriottsville, Maryland, United States"
+      }
     }
   ],
   "datePublished": "2026-07-11",

@@ -159,9 +159,20 @@ while env.agents:
 
 ## Publication target
 
-Version **0.4.0** is a publication candidate for the **Journal of Systems Research (JSys)** as a **Tools/Benchmark paper** in the Real-Time and Cyber-Physical Systems area. The anonymous paper is in `paper/`; the single-blind Artifact Evaluation materials are in `artifact/`.
+Version **0.4.0** is a submission candidate for the **Journal of Systems Research (JSys)** as a **Tools/Benchmark paper** in the Real-Time and Cyber-Physical Systems area. The paper under double-blind review is anonymous and does not link back to this repository; the Artifact-Evaluation materials in `artifact/` accompany the submission.
 
-Before submission, the exact audited release must be pushed, public CI must pass, an anonymous review snapshot must be created, and author/funding/conflict metadata must be confirmed by the authors.
+This release (`v0.4.0`) is tagged and published with public CI green on Python 3.10 through 3.13 (Linux, macOS, Windows), including the full Artifact-Evaluation workflow. See the [v0.4.0 release](https://github.com/ShauryaMallampati/Aurora/releases/tag/v0.4.0) for build assets and checksums.
+
+## Citation
+
+If you use AURORA, please cite the archived version-specific software release (see `CITATION.cff`; a DOI will be added at the archival deposit). In the interim:
+
+```
+Mallampati, Shaurya. AURORA: Experimental Isolation for Multi-Agent Wildfire Simulation, v0.4.0, 2026.
+https://github.com/ShauryaMallampati/Aurora
+```
+
+**Author:** Shaurya Mallampati ([shauryasai@gmail.com](mailto:shauryasai@gmail.com)) · Marriotts Ridge High School, Marriottsville, Maryland, United States · ORCID: [0009-0005-4079-9974](https://orcid.org/0009-0005-4079-9974)
 
 ## License and support
 
