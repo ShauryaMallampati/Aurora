@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "scenarios": [
+    {
+      "name": "warm_crosswind",
+      "grid_size": 24,
+      "wind_direction": [
+        0.0,
+        1.0
+      ],
+      "wind_intensity": 1.1,
+      "humidity": 0.38,
+      "temperature": 31.0,
+      "max_steps": 80,
+      "num_agents": 2,
+      "water_capacity": 8.0,
+      "recharge_rate": 1.5,
+      "strategy_cadence": 5,
+      "ignition_points": null
+    }
+  ]
+}

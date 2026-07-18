@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "python": "3.13.5 (main, May  5 2026, 21:05:52) [GCC 14.2.0]",
+  "platform": "Linux-4.4.0-x86_64-with-glibc2.41",
+  "checks": [
+    {
+      "name": "deterministic_trace_replay",
+      "status": "PASS",
+      "detail": "9763e6f7cf98817a3fd2cc4658579949934ef5ce6416ba7c00d94445f90ed7e4"
+    },
+    {
+      "name": "reset_integrity",
+      "status": "PASS",
+      "detail": "fire and fuel reset; transition randomness is counter-based"
+    },
+    {
+      "name": "state_semantics",
+      "status": "PASS",
+      "detail": "burning, burned, and suppressed states are distinct"
+    },
+    {
+      "name": "numpy_available",
+      "status": "PASS",
+      "detail": "NumPy 2.3.5"
+    },
+    {
+      "name": "python_version",
+      "status": "PASS",
+      "detail": "3.13.5"
+    }
+  ]
+}

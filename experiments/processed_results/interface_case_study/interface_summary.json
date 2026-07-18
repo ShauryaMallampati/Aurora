@@ -1,0 +1,10 @@
+{
+  "study_version": "1.0",
+  "num_scenarios": 8,
+  "num_seeds": 20,
+  "num_cases": 160,
+  "per_step_exact_matches": 160,
+  "final_digest_matches": 160,
+  "affected_area_matches": 160,
+  "interpretation": "Stay actions through the PettingZoo ParallelEnv leave fire dynamics unchanged; the adapter and direct engine are compared after every transition."
+}

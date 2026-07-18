@@ -1,0 +1,117 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Core test matrix: all supported Python versions on Linux.
+  test:
+    name: test (linux, py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev,interfaces]'
+      - name: Lint
+        run: python -m ruff check src tests examples experiments artifact
+      - name: Tests with branch-aware coverage
+        run: python -m pytest --cov=aurora --cov-branch --cov-report=term-missing
+      - name: CLI help and validation
+        run: |
+          aurora --help
+          aurora validate
+      - name: Examples
+        run: |
+          python examples/minimal.py
+          python examples/custom_strategy.py
+          python examples/pettingzoo_parallel.py
+      - name: Trace record and replay
+        run: |
+          aurora demo --method coordinated --scenario warm_crosswind --seed 7 --trace trace.json
+          aurora replay trace.json
+      - name: Package metadata sanity
+        run: python -c "import importlib.metadata as m; assert m.version('aurora-wildfire') == '0.4.0', m.version('aurora-wildfire'); print('version OK')"
+
+  # Broader OS coverage on a representative Python version.
+  os-compat:
+    name: os-compat (${{ matrix.os }}, py3.12)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev,interfaces]"
+      - run: python -m pytest --cov=aurora --cov-branch -q
+      - run: aurora validate
+      - run: python examples/custom_strategy.py
+      - run: python examples/pettingzoo_parallel.py
+
+  # Build distributions, install both from a clean environment, inspect them.
+  build:
+    name: build wheel + sdist and install both
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip build twine
+      - name: Build
+        run: python -m build
+      - name: Inspect distributions
+        run: |
+          twine check dist/*
+          python -m zipfile -l dist/*.whl | head -40
+          tar -tzf dist/*.tar.gz | head -40
+      - name: Install wheel in a fresh venv and smoke test
+        run: |
+          python -m venv /tmp/whlenv
+          /tmp/whlenv/bin/python -m pip install --upgrade pip
+          /tmp/whlenv/bin/python -m pip install dist/*.whl
+          /tmp/whlenv/bin/aurora --help
+          /tmp/whlenv/bin/aurora demo --method coordinated --scenario warm_crosswind --seed 7
+      - name: Install source distribution in a separate fresh venv
+        run: |
+          python -m venv /tmp/sdistenv
+          /tmp/sdistenv/bin/python -m pip install --upgrade pip
+          /tmp/sdistenv/bin/python -m pip install dist/*.tar.gz
+          /tmp/sdistenv/bin/aurora validate
+
+  # Full Artifact-Evaluation contract: smoke + full workflow, enforcing 115 tests,
+  # the 93.5% branch-coverage floor, the 480-episode benchmark, the 160+1000 fault
+  # study, the 160-case interface study, hashes, and 21 claim checks.
+  artifact:
+    name: artifact evaluation (smoke + full)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev,figures,interfaces]'
+      - name: Smoke Artifact Evaluation
+        run: python artifact/scripts/run_artifact.py --mode smoke --output-dir artifact_output_smoke
+      - name: Full Artifact Evaluation (480 benchmark, 160+1000 fault, 160 interface)
+        run: python artifact/scripts/run_artifact.py --mode full --output-dir artifact_output_full
+      - name: Upload artifact evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact-evaluation-report
+          path: artifact_output_full/artifact_report.json

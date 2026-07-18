@@ -1,0 +1,30 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "name": "AURORA",
+  "version": "0.4.0",
+  "description": "Deterministic benchmark, replay, and fault-injection tools for experimentally isolated multi-agent wildfire-response simulation.",
+  "codeRepository": "https://github.com/ShauryaMallampati/Aurora",
+  "issueTracker": "https://github.com/ShauryaMallampati/Aurora/issues",
+  "license": "https://spdx.org/licenses/MIT.html",
+  "programmingLanguage": "Python",
+  "runtimePlatform": "Python 3.10 through 3.13",
+  "applicationCategory": "Research software",
+  "keywords": [
+    "wildfire simulation",
+    "multi-agent systems",
+    "experimental isolation",
+    "fault injection",
+    "PettingZoo",
+    "reproducibility"
+  ],
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Shaurya",
+      "familyName": "Mallampati"
+    }
+  ],
+  "datePublished": "2026-07-11",
+  "developmentStatus": "active"
+}

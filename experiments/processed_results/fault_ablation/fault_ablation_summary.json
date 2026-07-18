@@ -1,0 +1,119 @@
+{
+  "study_version": "1.0",
+  "purpose": "Controlled fault injection within the same workloads; not a prevalence claim about external software.",
+  "num_scenarios": 8,
+  "num_seeds": 20,
+  "num_matched_cases": 160,
+  "scenario_names": [
+    "calm_humid",
+    "warm_crosswind",
+    "hot_dry",
+    "strong_northwind",
+    "constrained_water",
+    "dual_front",
+    "single_responder",
+    "large_grid_high_wind"
+  ],
+  "microcase": {
+    "synchronous_unique_suppressions": 1,
+    "sequential_suppressions": 2
+  },
+  "random_stream_drift": {
+    "keyed_environment_rng_with_policy_noop": {
+      "count": 0,
+      "n": 160,
+      "rate": 0.0,
+      "wilson_95_ci": [
+        0.0,
+        0.02344619517150519
+      ]
+    },
+    "shared_global_rng_with_policy_noop": {
+      "count": 160,
+      "n": 160,
+      "rate": 1.0,
+      "wilson_95_ci": [
+        0.9765538048284949,
+        1.0
+      ]
+    }
+  },
+  "within_step_information_leakage": {
+    "reference_benchmark_cases": {
+      "count": 0,
+      "n": 160,
+      "rate": 0.0,
+      "wilson_95_ci": [
+        0.0,
+        0.02344619517150519
+      ]
+    },
+    "adversarial_microstates": {
+      "count": 1000,
+      "n": 1000,
+      "rate": 1.0,
+      "wilson_95_ci": [
+        0.996173241514445,
+        1.0
+      ],
+      "mean_extra_suppressions_in_flawed_variant": 1.0,
+      "construction": "Adversarial two-agent states with one shared target and one alternate target visible only after the first live-state mutation."
+    }
+  },
+  "reset_contamination": {
+    "complete_reset": {
+      "count": 0,
+      "n": 160,
+      "rate": 0.0,
+      "wilson_95_ci": [
+        0.0,
+        0.02344619517150519
+      ]
+    },
+    "incomplete_reset": {
+      "count": 160,
+      "n": 160,
+      "rate": 1.0,
+      "wilson_95_ci": [
+        0.9765538048284949,
+        1.0
+      ]
+    }
+  },
+  "state_conflation": {
+    "mean_overstatement_of_natural_burned_cells": 7.403125,
+    "cluster_bootstrap_95_ci_of_mean_overstatement": [
+      4.76078125,
+      9.93125
+    ],
+    "reactive_benefit_sign_changed": {
+      "count": 83,
+      "n": 160,
+      "rate": 0.51875,
+      "wilson_95_ci": [
+        0.44180221922881474,
+        0.5948185484522539
+      ]
+    },
+    "coordinated_benefit_sign_changed": {
+      "count": 81,
+      "n": 160,
+      "rate": 0.50625,
+      "wilson_95_ci": [
+        0.4295485502719754,
+        0.5826583722883806
+      ]
+    },
+    "response_ranking_changed": {
+      "count": 47,
+      "n": 160,
+      "rate": 0.29375,
+      "wilson_95_ci": [
+        0.2286747315770294,
+        0.3684968239312166
+      ]
+    }
+  },
+  "bootstrap_seed": 20260711,
+  "bootstrap_draws": 2000
+}
