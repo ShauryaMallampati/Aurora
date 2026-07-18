@@ -1,0 +1,18 @@
+{
+  "method": "coordinated",
+  "scenario": "warm_crosswind",
+  "seed": 7,
+  "fire_inactive": true,
+  "steps": 18,
+  "initial_burning": 5,
+  "final_burning": 0,
+  "burned_area": 317,
+  "suppressed_area": 7,
+  "affected_area": 324,
+  "suppressions": 7,
+  "water_used": 7.0,
+  "distance_travelled": 15,
+  "strategy_updates": 4,
+  "trace": "examples/sample_output/coordinated_trace.json",
+  "trace_sha256": "2c6b59e576a5936dd78f72f80b857658d1cf354b48ca4a3c50e3e4aeb0ef509c"
+}

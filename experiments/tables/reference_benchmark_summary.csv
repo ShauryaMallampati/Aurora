@@ -1,0 +1,4 @@
+method,n,affected_mean,affected_std,affected_median,affected_q25,affected_q75
+no_response,160,408.575,159.2361305829141,405.0,324.0,419.25
+reactive,160,407.7,159.49834091524897,403.5,323.5,418.25
+coordinated,160,407.5875,159.08098437963906,403.5,323.5,418.25

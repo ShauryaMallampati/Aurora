@@ -1,141 +1,168 @@
 # AURORA
 
-## Wildfire containment with hybrid PPO and LLM guidance
+**AURORA is a deterministic benchmark, replay, and fault-injection framework for experimentally isolated comparisons of multi-agent wildfire-response strategies.** It combines an intentionally abstract grid simulator with event-keyed environmental randomness, synchronous multi-agent timing, complete reset semantics, causal state labels, replayable traces, matched benchmarks, a custom strategy API, and an optional PettingZoo parallel environment.
 
-AURORA is a research codebase for training autonomous drone swarms to contain wildfires. The main system combines PPO for low-level control with optional LLM-based strategic guidance.
+> **Safety boundary:** AURORA is research and teaching software. It is not calibrated for real fires and must not be used for forecasting, incident command, aviation control, dispatch, or any safety-critical decision.
 
-The repository includes:
+## Why AURORA exists
 
-- training entrypoints for PPO-only and hybrid runs
-- evaluation helpers and callbacks
-- real-data ingestion for fire perimeters, weather, and terrain features
-- an ablation-study scaffold under `results/ablation_study/`
+A simulation can produce a reproducible-looking but invalid strategy comparison when:
 
-## Current status
+- policy branching shifts a shared environmental random stream;
+- later agents observe earlier agents' actions within the same nominal step;
+- reset retains depleted fuel or hidden state;
+- suppressed cells are counted as naturally burned;
+- a final score cannot be traced to a versioned trajectory;
+- benchmark values live only in an undocumented notebook.
 
-The implementation pipeline is present and the reviewer-facing package has been scaffolded. The current empirical status is documented in:
+AURORA treats these as executable systems requirements rather than documentation promises.
 
-- `results/ablation_study/REPO_AUDIT.md`
-- `results/ablation_study/FINAL_AUDIT.md`
-- `results/ablation_study/README.md`
+## Publication evidence
 
-Use those files as the source of truth for which experiment families are complete and which are still pending.
+The bundled controlled study uses 8 scenario families and 20 seeds (160 matched cases):
 
-## Quick start
+| Controlled comparison | Correct design | Injected fault |
+|---|---:|---:|
+| Irrelevant policy draw changes trajectory | 0/160 | 160/160 with shared RNG |
+| Reset changes matched rerun | 0/160 | 160/160 with retained fuel |
+| Sequential timing leak in adversarial states | 0/1,000 | 1,000/1,000 |
 
-### Prerequisites
+Conflating suppressed cells with natural burnout:
 
-- Python 3.9+
-- GPU recommended for larger training runs
-- 16 GB RAM minimum
+- overstates natural burned area by **7.403 cells on average** (scenario-cluster bootstrap 95% interval **[4.761, 9.931]**);
+- changes the reactive-benefit sign in **83/160** cases;
+- changes the coordinated-benefit sign in **81/160** cases;
+- changes the reactive-versus-coordinated ranking in **47/160 (29.4%)** cases.
 
-### Install
+The PettingZoo adapter and direct engine match after every no-op transition in **160/160** scenario-seed cases. These are controlled software results, not claims about defect prevalence in external simulators or real wildfire effectiveness.
 
-```bash
-git clone https://github.com/yourusername/AURORA.git
-cd AURORA
+## Install
 
-python -m venv venv
-source venv/bin/activate
-
-pip install -r requirements.txt
-python preflight.py
-```
-
-### Run a short training job
+Core package:
 
 ```bash
-python train_hybrid.py --phase quick
+python -m venv .venv
+source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install .
 ```
 
-### Run the simulator
+Development, figures, and external interfaces:
 
 ```bash
-python main_enhanced.py
+python -m pip install -e '.[dev,figures,interfaces]'
 ```
 
-### Run the web dashboard
+## Five-minute verification
 
 ```bash
-cd aurora-web
-npm install
-npm run dev
+aurora --help
+aurora scenarios
+aurora demo --method coordinated --scenario warm_crosswind --seed 7 --trace trace.json
+aurora replay trace.json
+aurora validate --output validation.json
+python examples/custom_strategy.py
+python examples/pettingzoo_parallel.py
+python -m pytest
 ```
 
-## API keys
+## JSys Artifact Evaluation
 
-Local environment files are ignored by git. Keep credentials out of tracked files.
-
-### Python backend
+Smoke workflow:
 
 ```bash
-export HF_TOKEN=<your_huggingface_token>
+python artifact/scripts/run_artifact.py --mode smoke --output-dir artifact_output_smoke
 ```
 
-### Web dashboard
-
-Create `aurora-web/.env.local` with:
+Full workflow after installing `.[dev,figures,interfaces]`:
 
 ```bash
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<your_google_maps_browser_key>
-NEXT_PUBLIC_SUPABASE_URL=<your_supabase_url>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your_supabase_anon_key>
+python artifact/scripts/run_artifact.py --mode full --output-dir artifact_output_full
 ```
 
-A tracked example file is available at `aurora-web/.env.example`.
+The full workflow runs validation, record/replay, tests with branch coverage, examples, the 480-episode benchmark, the 160-case fault study, the 160-case interface study, hash checks, and 21 numeric claim checks. Interrupted or separately scheduled generation can be verified with:
 
-## Repository layout
-
-```text
-AURORA/
-├── train.py
-├── train_hybrid.py
-├── evaluate.py
-├── callbacks.py
-├── agents/
-├── configs/
-├── data/
-├── docs/
-├── results/
-└── aurora-web/
+```bash
+python artifact/scripts/run_artifact.py \
+  --mode full --reuse-existing --output-dir artifact_output_full
 ```
 
-## Training and evaluation
+See [`artifact/README.md`](artifact/README.md) for the complete evaluator protocol.
 
-Typical entrypoints:
+## Python API
 
-- `python train.py` for PPO-only training
-- `python train_hybrid.py` for hybrid PPO + strategist training
-- `python evaluate.py` for evaluation helpers
-- `python run_ablation_suite.py --mode audit` for the ablation-study audit flow
+### Deterministic trace and replay
 
-Phase definitions live in `configs/training_phases.yaml`. The current ablation-study settings live in `configs/ablation_study.yaml`.
+```python
+from aurora.coordination import run_episode_with_trace, verify_trace
+from aurora.scenarios import REFERENCE_SCENARIOS
 
-## Real-data integration
+trace = run_episode_with_trace("coordinated", REFERENCE_SCENARIOS[1], seed=7)
+assert verify_trace(trace)
+print(trace.result.to_dict())
+print(trace.sha256())
+```
 
-The codebase can integrate:
+### Custom strategy
 
-- InterAgency Fire Perimeter data
-- NOAA weather data
-- terrain-derived features used by the simulator
+```python
+from aurora import run_strategy_episode
+from aurora.scenarios import REFERENCE_SCENARIOS
+from aurora.strategy import HeuristicStrategist
 
-Data loading and strict-mode behavior are summarized in `results/ablation_study/REPO_AUDIT.md`.
+result = run_strategy_episode(
+    HeuristicStrategist(),
+    REFERENCE_SCENARIOS[0],
+    seed=5,
+    method_name="my_strategy",
+)
+print(result)
+```
+
+### PettingZoo parallel interface
+
+```python
+from aurora.adapters import WildfireParallelEnv
+from aurora.scenarios import REFERENCE_SCENARIOS
+
+env = WildfireParallelEnv(REFERENCE_SCENARIOS[0], seed=4)
+observations, infos = env.reset()
+while env.agents:
+    observations, rewards, terminations, truncations, infos = env.step(
+        {agent: 0 for agent in env.agents}
+    )
+```
+
+## Quality status
+
+- **115 automated tests** pass; independently re-run on macOS/Python 3.10 and in the audited Linux/Python 3.13 environment.
+- **93.70% branch-aware coverage**.
+- Python 3.10–3.13 is declared and CI-configured.
+- Ruff linting passes for source, tests, examples, experiment scripts, and artifact scripts.
+- Source distribution and pure-Python wheel build and install cleanly.
+- Freshly regenerated benchmark, fault-study, and interface-study artifacts match the release hashes exactly.
+- The three long evidence stages completed in approximately 12.4 s, 29.3 s, and 4.5 s in the audited environment; timings are hardware dependent.
 
 ## Documentation
 
-- `docs/ABSTRACT.md`
-- `docs/ANALYSIS.md`
-- `docs/README.md`
-- `results/ablation_study/README.md`
+- [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — installation and first verified run
+- [`docs/API.md`](docs/API.md) — public Python API
+- [`docs/FAULT_INJECTION.md`](docs/FAULT_INJECTION.md) — controlled fault study and interpretation
+- [`docs/PETTINGZOO.md`](docs/PETTINGZOO.md) — parallel environment interface
+- [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) — scenario and benchmark configuration
+- [`docs/SCENARIOS.md`](docs/SCENARIOS.md) — bundled scenario families
+- [`docs/STRATEGY_INTERFACE.md`](docs/STRATEGY_INTERFACE.md) — adding a strategy
+- [`docs/BENCHMARK.md`](docs/BENCHMARK.md) — benchmark design and statistical contract
+- [`docs/REUSE.md`](docs/REUSE.md) — concrete research and teaching reuse patterns
+- [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) — common installation/runtime issues
+- [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) — end-to-end evidence contract
 
-## Requirements
+## Publication target
 
-Core dependencies include PyTorch, Stable-Baselines3, Gymnasium, Transformers, and GeoPandas. See `requirements.txt` for the exact versions used by the current pipeline.
+Version **0.4.0** is a publication candidate for the **Journal of Systems Research (JSys)** as a **Tools/Benchmark paper** in the Real-Time and Cyber-Physical Systems area. The anonymous paper is in `paper/`; the single-blind Artifact Evaluation materials are in `artifact/`.
 
-## Contributing
+Before submission, the exact audited release must be pushed, public CI must pass, an anonymous review snapshot must be created, and author/funding/conflict metadata must be confirmed by the authors.
 
-Issues and pull requests are welcome. If you add a data source, benchmark, or new experiment variant, update the relevant documentation under `docs/` or `results/ablation_study/`.
+## License and support
 
-## License
-
-MIT. See `LICENSE`.
+AURORA is released under the MIT License. See `LICENSE`, `THIRD_PARTY_NOTICES.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `GOVERNANCE.md`, `SECURITY.md`, and `SUPPORT.md`.

@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use AURORA, cite the archived version-specific software release. Insert the release DOI before publication."
+title: "AURORA: Experimental Isolation for Multi-Agent Wildfire Simulation"
+type: software
+authors:
+  - family-names: Mallampati
+    given-names: Shaurya
+version: 0.4.0
+date-released: 2026-07-11
+repository-code: "https://github.com/ShauryaMallampati/Aurora"
+url: "https://github.com/ShauryaMallampati/Aurora"
+abstract: >-
+  AURORA is a deterministic Python benchmark, replay, and fault-injection
+  framework for experimentally isolated comparisons of multi-agent
+  wildfire-response strategies. It provides event-keyed environmental
+  randomness, synchronous action semantics, complete reset, causal fire-state
+  labels, custom strategies, a PettingZoo adapter, replayable traces, and
+  executable evidence workflows. It is not an operational or physically
+  calibrated wildfire model.
+keywords:
+  - wildfire simulation
+  - multi-agent systems
+  - experimental isolation
+  - fault injection
+  - PettingZoo
+  - reproducibility
+license: MIT

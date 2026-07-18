@@ -1,0 +1,14 @@
+{
+  "num_matched_cases": 160,
+  "keyed_rng_divergence_count": 0,
+  "shared_rng_divergence_count": 160,
+  "complete_reset_divergence_count": 0,
+  "incomplete_reset_divergence_count": 160,
+  "adversarial_information_leakage_count": 1000,
+  "mean_overstatement_of_natural_burned_cells": 7.403125,
+  "reactive_benefit_sign_change_rate": 0.51875,
+  "coordinated_benefit_sign_change_rate": 0.50625,
+  "response_ranking_change_rate": 0.29375,
+  "interface_cases": 160,
+  "interface_per_step_exact_matches": 160
+}

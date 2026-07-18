@@ -1,0 +1,15 @@
+{
+  "total_episodes": 480,
+  "num_scenarios": 8,
+  "num_seeds": 20,
+  "affected_area_mean": {
+    "no_response": 408.575,
+    "reactive": 407.7,
+    "coordinated": 407.5875
+  },
+  "avoided_affected_cells_mean": {
+    "reactive": 0.875,
+    "coordinated": 0.9875
+  },
+  "coordinated_minus_reactive_mean": -0.1125
+}
