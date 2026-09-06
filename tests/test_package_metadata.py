@@ -14,10 +14,9 @@ def test_required_community_files_exist():
     for name in (
         "LICENSE",
         "README.md",
-        "CONTRIBUTING.md",
-        "CODE_OF_CONDUCT.md",
-        "GOVERNANCE.md",
-        "SUPPORT.md",
+        ".github/CONTRIBUTING.md",
+        ".github/CODE_OF_CONDUCT.md",
+        ".github/SECURITY.md",
         "CITATION.cff",
     ):
         assert (root / name).is_file(), name

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reduced the repository root to essential project files; moved supporting documentation into `docs/`, community policies into `.github/`, and the container recipe into `artifact/`.
+- Consolidated author credits into the README and citation, and support and review guidance into the contributing guide.
+- Removed the duplicate artifact entry point and requirements files; `pyproject.toml` is the dependency source of truth.
+
 - Simplified the README with a working quick start, documentation navigation, and project credits.
 - Credited Shaurya Mallampati and Ankit Mohanty as co-authors in the README, citation, credits, and package metadata.
 - Fixed documentation paths and removed packaging and build references to absent submission files.

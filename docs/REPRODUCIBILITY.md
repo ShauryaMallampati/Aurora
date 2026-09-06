@@ -42,7 +42,7 @@ python artifact/scripts/run_artifact.py --mode full --output-dir artifact_output
 
 The full workflow covers record/replay, tests, coverage, examples, the 480-episode benchmark, the 160-case fault study, the 160-case interface study, exact release hashes, and 21 numerical paper claims. Any mismatch returns a nonzero status.
 
-See `artifact/README.md` for manual stage execution and resumable verification.
+See the [artifact guide](../artifact/README.md) for manual stage execution and resumable verification.
 
 ## Manuscript
 

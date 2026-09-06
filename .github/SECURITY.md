@@ -4,4 +4,4 @@ AURORA is research software and does not expose a network service or process unt
 
 To report a suspected vulnerability, open a GitHub issue containing a minimal non-sensitive description and request a private follow-up channel if disclosure would create risk. Include the affected version, operating system, Python version, reproduction steps, and expected impact.
 
-The project does not promise operational use or suitability for safety-critical wildfire decisions. See `REMAINING_LIMITATIONS.md` and the safety boundary in `README.md`.
+The project does not promise operational use or suitability for safety-critical wildfire decisions. See the safety boundary in the [README](../README.md).

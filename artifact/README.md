@@ -27,6 +27,15 @@ python -m pip install '.[dev,figures,interfaces]'
 
 The package may also be installed from a wheel built with `python -m build`. Linux is the primary Artifact Evaluation platform; the core package is designed for Linux, macOS, and Windows.
 
+## Container smoke test
+
+From the repository root:
+
+```bash
+docker build -f artifact/Dockerfile -t aurora .
+docker run --rm aurora
+```
+
 ## Fast smoke test
 
 ```bash

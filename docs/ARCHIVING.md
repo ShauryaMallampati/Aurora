@@ -9,7 +9,7 @@ JSys recommends publishing artifacts in a repository that provides a persistent 
 3. Tag the release as `v0.4.0`.
 4. Publish a GitHub release from that tag.
 5. Archive the tagged source through Zenodo or an equivalent preservation service.
-6. Record the version-specific DOI in `CITATION.cff`, `codemeta.json`, the camera-ready manuscript, and release metadata.
+6. Record the version-specific DOI in `CITATION.cff`, `docs/codemeta.json`, the camera-ready manuscript, and release metadata.
 7. Build and inspect the camera-ready manuscript with the official `jsys_camera_ready` style.
 8. Recompute release checksums and compare the archive with the tagged repository tree.
 

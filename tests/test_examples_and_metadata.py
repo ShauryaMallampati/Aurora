@@ -47,6 +47,6 @@ def test_minimal_example_runs(capsys) -> None:
 
 
 def test_codemeta_matches_package_version() -> None:
-    payload = json.loads((ROOT / "codemeta.json").read_text(encoding="utf-8"))
+    payload = json.loads((ROOT / "docs/codemeta.json").read_text(encoding="utf-8"))
     assert payload["version"] == aurora.__version__
     assert payload["license"].endswith("MIT.html")

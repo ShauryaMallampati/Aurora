@@ -16,6 +16,4 @@ Dependencies are installed separately and retain their own licenses. The audited
 - wheel — MIT;
 - Ruff — MIT.
 
-The JSys submission style is adapted from the USENIX style with permission, as documented in `paper/jsys.sty`. `paper/plainurl.bst` is distributed under the LPPL terms stated in that file.
-
 Users redistributing complete environments should retain notices supplied by each dependency.

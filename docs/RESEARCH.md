@@ -37,6 +37,6 @@ The PettingZoo adapter and direct engine match after every no-op transition in *
 
 ## Reproduce the results
 
-Follow the [reproducibility contract](../REPRODUCIBILITY.md) or the [artifact evaluation guide](../artifact/README.md). Expected hashes and numeric claims are versioned in [`artifact/expected/`](../artifact/expected/).
+Follow the [reproducibility contract](REPRODUCIBILITY.md) or the [artifact evaluation guide](../artifact/README.md). Expected hashes and numeric claims are versioned in [`artifact/expected/`](../artifact/expected/).
 
 The software is associated with a JSys Tools/Benchmark submission. The anonymous manuscript is maintained separately from this public source tree.

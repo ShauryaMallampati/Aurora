@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-[Quick start](docs/QUICKSTART.md) · [Python API](docs/API.md) · [Research evidence](docs/RESEARCH.md) · [Credits](CREDITS.md)
+[Quick start](docs/QUICKSTART.md) · [Python API](docs/API.md) · [Research evidence](docs/RESEARCH.md) · [Authors](#authors)
 
 AURORA is a Python framework for comparing response strategies in an abstract wildfire grid simulator. It provides deterministic runs, replayable traces, and controlled fault injection so you can examine how simulator design affects experimental results.
 
@@ -83,14 +83,14 @@ The v0.4.0 evidence contract includes 115 tests, a 480-episode benchmark, a 160-
 | Python integration | [API](docs/API.md) · [Custom strategies](docs/STRATEGY_INTERFACE.md) · [PettingZoo](docs/PETTINGZOO.md) |
 | Experiment design | [Scenarios](docs/SCENARIOS.md) · [Configuration](docs/CONFIGURATION.md) · [Benchmarks](docs/BENCHMARK.md) |
 | Research and reuse | [Evidence](docs/RESEARCH.md) · [Fault injection](docs/FAULT_INJECTION.md) · [Reuse patterns](docs/REUSE.md) |
-| Reproducing results | [Reproducibility](REPRODUCIBILITY.md) · [Artifact evaluation](artifact/README.md) |
-| Project history | [Changelog](CHANGELOG.md) · [Migration from earlier versions](docs/MIGRATION.md) |
+| Reproducing results | [Reproducibility](docs/REPRODUCIBILITY.md) · [Artifact evaluation](artifact/README.md) |
+| Project history | [Changelog](docs/CHANGELOG.md) · [Migration from earlier versions](docs/MIGRATION.md) |
 
-## Credits
+## Authors
 
 AURORA was created by **Shaurya Mallampati** and **Ankit Mohanty**.
 
-See [CREDITS.md](CREDITS.md) for attribution and [third-party notices](THIRD_PARTY_NOTICES.md) for dependency acknowledgments.
+See [third-party notices](docs/THIRD_PARTY_NOTICES.md) for dependency acknowledgments.
 
 ## Citation
 
@@ -105,6 +105,6 @@ See the [archiving guide](docs/ARCHIVING.md) for version-specific citation and D
 
 ## Contributing and support
 
-Contributions are welcome. Read the [contributing guide](CONTRIBUTING.md), [code of conduct](CODE_OF_CONDUCT.md), and [governance](GOVERNANCE.md). Use [GitHub issues](https://github.com/ShauryaMallampati/Aurora/issues) for bugs and questions; see [security reporting](SECURITY.md) for vulnerabilities.
+Contributions are welcome. Read the [contributing guide](.github/CONTRIBUTING.md) and [code of conduct](.github/CODE_OF_CONDUCT.md). Use [GitHub issues](https://github.com/ShauryaMallampati/Aurora/issues) for bugs and questions; see [security reporting](.github/SECURITY.md) for vulnerabilities.
 
 Released under the [MIT License](LICENSE).

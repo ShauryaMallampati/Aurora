@@ -1,5 +1,0 @@
--r base.txt
-build>=1.2,<2
-pytest>=8,<10
-pytest-cov>=5,<8
-ruff>=0.6,<1
