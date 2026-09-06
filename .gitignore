@@ -2,8 +2,11 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.ruff_cache/
 .coverage
+.coverage.*
 coverage.xml
+/coverage.json
 htmlcov/
 
 # Virtual environments
@@ -20,10 +23,16 @@ dist/
 .idea/
 .vscode/
 
-# LaTeX intermediates
-paper/*.aux
-paper/*.log
-paper/*.out
-paper/*.toc
-paper/*.bbl
-paper/*.blg
+# Local experiment and verification outputs
+/artifact_output/
+/artifact_output_*/
+/benchmark_output/
+/fault_output/
+/interface_output/
+/trace.json
+/validation.json
+
+# Local environment configuration
+.env
+.env.*
+!.env.example

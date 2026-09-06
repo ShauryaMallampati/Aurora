@@ -1,6 +1,6 @@
 # Start Here - JSys Artifact Evaluation
 
-This package accompanies the anonymous Tools/Benchmark submission. It contains the exact AURORA 0.4.0 source, tests, release distributions, expected hashes, and generated reference evidence.
+This package accompanies the anonymous Tools/Benchmark submission. It contains the exact AURORA 0.4.0 source, tests, expected hashes, and generated reference evidence. Build release distributions locally with `python -m build`.
 
 ## Recommended evaluation
 

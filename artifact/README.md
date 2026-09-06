@@ -25,7 +25,7 @@ python -m pip install --upgrade pip
 python -m pip install '.[dev,figures,interfaces]'
 ```
 
-The package may also be installed from the included wheel. Linux is the primary Artifact Evaluation platform; the core package is designed for Linux, macOS, and Windows.
+The package may also be installed from a wheel built with `python -m build`. Linux is the primary Artifact Evaluation platform; the core package is designed for Linux, macOS, and Windows.
 
 ## Fast smoke test
 

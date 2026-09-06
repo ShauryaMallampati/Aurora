@@ -9,6 +9,8 @@
 ## Install
 
 ```bash
+git clone https://github.com/ShauryaMallampati/Aurora.git
+cd Aurora
 python -m venv .venv
 source .venv/bin/activate  # PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
@@ -41,7 +43,7 @@ Expected replay status: `PASS`.
 ## Run examples
 
 ```bash
-python examples/minimal_run.py
+python examples/minimal.py
 python examples/custom_strategy.py
 python examples/pettingzoo_parallel.py
 ```

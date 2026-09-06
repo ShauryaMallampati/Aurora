@@ -1,4 +1,4 @@
-.PHONY: install test coverage validate artifact-smoke artifact-full benchmark ablation interface paper build clean
+.PHONY: install test coverage validate artifact-smoke artifact-full benchmark ablation interface build clean
 
 install:
 	python -m pip install -e '.[dev,figures,interfaces]'
@@ -27,11 +27,8 @@ ablation:
 interface:
 	python experiments/scripts/run_interface_case_study.py --output-dir experiments/processed_results/interface_case_study --num-seeds 20
 
-paper:
-	cd paper && pdflatex -interaction=nonstopmode main.tex && bibtex main && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex
-
 build:
 	python -m build
 
 clean:
-	rm -rf build dist .pytest_cache .coverage htmlcov artifact_output artifact_output_* paper/*.aux paper/*.bbl paper/*.blg paper/*.log paper/*.out
+	rm -rf build dist .pytest_cache .coverage htmlcov artifact_output artifact_output_*

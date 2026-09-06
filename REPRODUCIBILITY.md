@@ -44,19 +44,9 @@ The full workflow covers record/replay, tests, coverage, examples, the 480-episo
 
 See `artifact/README.md` for manual stage execution and resumable verification.
 
-## Paper build
+## Manuscript
 
-The anonymous submission uses the official JSys style included in `paper/jsys.sty` and the `plainurl` BibTeX style.
-
-```bash
-cd paper
-pdflatex -interaction=nonstopmode -halt-on-error main.tex
-bibtex main
-pdflatex -interaction=nonstopmode -halt-on-error main.tex
-pdflatex -interaction=nonstopmode -halt-on-error main.tex
-```
-
-Some Debian images expose the binary as `bibtex.original` because of an alternatives configuration; standard TeX installations use `bibtex`.
+The anonymous manuscript is maintained separately and is not included in this public source tree. The software evidence and reproduction commands are included in this repository.
 
 ## Audited environment
 

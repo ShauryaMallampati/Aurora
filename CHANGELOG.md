@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Simplified the README with a working quick start, documentation navigation, and project credits.
+- Credited Shaurya Mallampati and Ankit Mohanty as co-authors in the README, citation, credits, and package metadata.
+- Fixed documentation paths and removed packaging and build references to absent submission files.
+- Ignored local verification outputs, tool caches, and environment configuration.
+
 ## 0.4.0 — 2026-07-11
 
 ### Scientific and systems evidence

@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
-authors = [{name = "Shaurya Mallampati", email = "shauryasai@gmail.com"}]
+authors = [
+  {name = "Shaurya Mallampati", email = "shauryasai@gmail.com"},
+  {name = "Ankit Mohanty"},
+]
 keywords = ["wildfire", "multi-agent systems", "simulation", "fault injection", "PettingZoo", "research software"]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -40,7 +43,7 @@ aurora = "aurora.cli:main"
 [project.urls]
 Repository = "https://github.com/ShauryaMallampati/Aurora"
 Issues = "https://github.com/ShauryaMallampati/Aurora/issues"
-Documentation = "https://github.com/ShauryaMallampati/Aurora/tree/Main/docs"
+Documentation = "https://github.com/ShauryaMallampati/Aurora/tree/main/docs"
 
 [tool.setuptools.packages.find]
 where = ["src"]

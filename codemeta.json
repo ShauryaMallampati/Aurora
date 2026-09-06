@@ -30,6 +30,11 @@
         "name": "Marriotts Ridge High School",
         "address": "Marriottsville, Maryland, United States"
       }
+    },
+    {
+      "@type": "Person",
+      "givenName": "Ankit",
+      "familyName": "Mohanty"
     }
   ],
   "datePublished": "2026-07-11",
