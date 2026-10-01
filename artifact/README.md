@@ -1,6 +1,6 @@
-# JSys Artifact Evaluation Guide
+# Artifact Evaluation Guide
 
-This single-blind artifact accompanies an anonymous JSys Tools/Benchmark submission. It evaluates the paper's software, fault-isolation, interoperability, and reproducibility claims on Linux with Python 3.10 or later. It requires no GPU, external service, private dataset, or network access after dependencies are installed.
+This guide verifies AURORA's software, fault-isolation, interoperability, and reproducibility evidence on Linux with Python 3.10–3.13. It requires no GPU, external service, private dataset, or network access after dependencies are installed.
 
 ## Claims evaluated
 
