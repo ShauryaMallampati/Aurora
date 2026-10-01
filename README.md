@@ -20,6 +20,12 @@ AURORA is a Python framework for comparing response strategies in an abstract wi
 - **Bring your own strategy:** use the Python strategy API or the optional PettingZoo parallel environment.
 - **Reproduce the evidence:** run the bundled benchmarks, tests, and artifact checks.
 
+## Engineering decisions
+
+- **Reproducibility over hidden simulator state:** event-keyed randomness and complete resets make matched runs comparable and replayable.
+- **Explicit failure modes:** fault injection isolates timing, reset, random-stream, and state-label errors instead of burying them in aggregate scores.
+- **Evidence tied to code:** the release checks tests, trace replay, benchmark outputs, and numeric claims together so a passing demo is not treated as proof of correctness.
+
 ## Get started
 
 Requires **Python 3.10–3.13**. From a terminal:
